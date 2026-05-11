@@ -1,0 +1,515 @@
+_G.Config = {
+    gatlingcooldown = 0.05,
+    multiplytimes = 5,
+    norecoil = true,
+    auto_fire = false,
+    enabled = true,
+    aimRadius = 300,
+    maxRange = 500    
+}
+
+local Network = game.ReplicatedStorage:WaitForChild("Network", 8)
+local GatlingNetwork = Network and Network:WaitForChild("GatlingGun", 8)
+local RE_Fire = GatlingNetwork and GatlingNetwork:WaitForChild("RE:Fire", 8)
+
+if not RE_Fire then
+    return
+end
+
+local uis = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local camera = workspace.CurrentCamera
+local player = Players.LocalPlayer
+local npcs = workspace:WaitForChild("NPCs")
+
+local function getEnemyRoot(model)
+    return model:FindFirstChild("HumanoidRootPart")
+        or model:FindFirstChild("Hitbox")
+        or model.PrimaryPart
+        or model:FindFirstChildWhichIsA("BasePart")
+end
+
+local function getEnemies()
+    local list = {}
+    for _, model in ipairs(npcs:GetChildren()) do
+        if model:IsA("Model") then
+            local rootPointer = model:FindFirstChild("RootPointer")
+            if rootPointer and rootPointer.Value then
+                local folder = rootPointer.Value
+                local fakeUnit = folder:GetAttribute("FakeUnit")
+                local unitType = folder:GetAttribute("Type")
+                if fakeUnit == false and unitType == "Enemies" then
+                    local root = getEnemyRoot(model)
+                    local hp = folder:GetAttribute("Health") or 0
+                    if root and hp > 0 then
+                        table.insert(list, {model = model, root = root, hp = hp})
+                    end
+                end
+            end
+        end
+    end
+    return list
+end
+
+local function getAimTarget()
+    local viewportSize = camera.ViewportSize
+    local screenCenter = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+    local enemies = getEnemies()
+    if #enemies == 0 then return nil end
+    local bestEnemy = nil
+    local bestDist2D = math.huge
+    for _, e in ipairs(enemies) do
+        local screenPos, onScreen = camera:WorldToViewportPoint(e.root.Position)
+        if onScreen then
+            local dist2D = (Vector2.new(screenPos.X, screenPos.Y) - screenCenter).Magnitude
+            if dist2D < _G.Config.aimRadius and dist2D < bestDist2D then
+                local dist3D = (e.root.Position - camera.CFrame.Position).Magnitude
+                if dist3D <= _G.Config.maxRange then
+                    bestDist2D = dist2D
+                    bestEnemy = e
+                end
+            end
+        end
+    end
+    return bestEnemy
+end
+
+local function getFallbackPosition()
+    local viewportSize = camera.ViewportSize
+    local screenCenter = Vector2.new(viewportSize.X / 2, viewportSize.Y / 2)
+    local ray = camera:ViewportPointToRay(screenCenter.X, screenCenter.Y, 0)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    local ignore = {}
+    if player.Character then table.insert(ignore, player.Character) end
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p.Character then table.insert(ignore, p.Character) end
+    end
+    local towers = workspace:FindFirstChild("Towers")
+    if towers then table.insert(ignore, towers) end
+    rayParams.FilterDescendantsInstances = ignore
+    local result = workspace:Raycast(ray.Origin, ray.Direction * _G.Config.maxRange, rayParams)
+    if result then
+        return result.Position
+    end
+    return ray.Origin + ray.Direction * _G.Config.maxRange
+end
+
+local function sendFirePacket()
+    if not _G.Config.enabled then return end
+    local targetPos
+    local enemy = getAimTarget()
+    if enemy then
+        local vel = enemy.root.AssemblyLinearVelocity
+        local predicted = enemy.root.Position + vel * 0.05
+        targetPos = Vector3.new(predicted.X, predicted.Y, predicted.Z)
+    else
+        targetPos = getFallbackPosition()
+    end
+    local sync = workspace:GetAttribute("Sync") or 0
+    local serverTime = workspace:GetServerTimeNow()
+    for i = 1, _G.Config.multiplytimes do
+        pcall(function()
+            RE_Fire:FireServer(
+                vector.create(targetPos.X, targetPos.Y, targetPos.Z),
+                sync,
+                serverTime + (i * 0.0005)
+            )
+        end)
+    end
+end
+
+local firing = false
+
+uis.InputBegan:Connect(function(input, gp)
+    if gp or not _G.Config.enabled then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        firing = true
+        while firing and uis:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
+            sendFirePacket()
+            task.wait(_G.Config.gatlingcooldown)
+        end
+    end
+end)
+
+uis.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        firing = false
+    end
+end)
+
+if _G.Config.auto_fire then
+    task.spawn(function()
+        while _G.Config.enabled do
+            if not firing then
+                sendFirePacket()
+            end
+            task.wait(_G.Config.gatlingcooldown)
+        end
+    end)
+end
+
+_G.UpdateGatling = function(newConfig)
+    for k, v in pairs(newConfig) do
+        if _G.Config[k] ~= nil then
+            _G.Config[k] = v
+        end
+    end
+end
+
+task.wait(0.5)
+
+local guiInstance = nil
+
+local function CreateGUI()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "ScreemGio"
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    gui.ResetOnSpawn = false
+    gui.Parent = player:WaitForChild("PlayerGui")
+    gui.Enabled = true
+    guiInstance = gui
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0, 340, 0, 450)
+    mainFrame.Position = UDim2.new(0.5, -170, 0.5, -225)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    mainFrame.BackgroundTransparency = 0.05
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.ZIndex = 10
+    mainFrame.Parent = gui
+    
+    -- Add corner rounding
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = mainFrame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 35)
+    title.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+    title.Text = "GATLING MODS 🔫 by MargaX"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18
+    title.ZIndex = 11
+    title.Parent = mainFrame
+    
+    -- Add corner to title
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 10)
+    titleCorner.Parent = title
+
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 35, 0, 35)
+    closeBtn.Position = UDim2.new(1, -35, 0, 0)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+    closeBtn.Text = "X"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextSize = 18
+    closeBtn.ZIndex = 11
+    closeBtn.Parent = mainFrame
+    
+    -- Add corner to close button
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 5)
+    closeCorner.Parent = closeBtn
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        if guiInstance then
+            guiInstance:Destroy()
+            guiInstance = nil
+        end
+    end)
+
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, -10, 1, -45)
+    scrollFrame.Position = UDim2.new(0, 5, 0, 40)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 450)
+    scrollFrame.ScrollBarThickness = 6
+    scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 150, 250)
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ZIndex = 10
+    scrollFrame.Parent = mainFrame
+
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.Padding = UDim.new(0, 10)
+    listLayout.Parent = scrollFrame
+
+    local function createSlider(parent, labelText, minVal, maxVal, configKey, isInt, format)
+        if _G.Config[configKey] == nil then
+            return nil
+        end
+        
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(1, -10, 0, 85)
+        container.BackgroundTransparency = 1
+        container.ZIndex = 10
+        container.Parent = parent
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -100, 0, 22)
+        label.BackgroundTransparency = 1
+        label.Text = labelText
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.Font = Enum.Font.Gotham
+        label.TextSize = 14
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 11
+        label.Parent = container
+        
+        local inputBox = Instance.new("TextBox")
+        inputBox.Size = UDim2.new(0, 80, 0, 28)
+        inputBox.Position = UDim2.new(1, -85, 0, -3)
+        inputBox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        inputBox.BackgroundTransparency = 0
+        inputBox.Text = tostring(_G.Config[configKey])
+        inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+        inputBox.Font = Enum.Font.GothamBold
+        inputBox.TextSize = 14
+        inputBox.ClearTextOnFocus = true
+        inputBox.ZIndex = 11
+        inputBox.Parent = container
+        
+        -- Add corner to input box
+        local inputCorner = Instance.new("UICorner")
+        inputCorner.CornerRadius = UDim.new(0, 4)
+        inputCorner.Parent = inputBox
+        
+        local sliderBg = Instance.new("Frame")
+        sliderBg.Size = UDim2.new(1, 0, 0, 6)
+        sliderBg.Position = UDim2.new(0, 0, 0, 35)
+        sliderBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        sliderBg.BorderSizePixel = 0
+        sliderBg.ZIndex = 10
+        sliderBg.Parent = container
+        
+        local sliderCorner = Instance.new("UICorner")
+        sliderCorner.CornerRadius = UDim.new(0, 3)
+        sliderCorner.Parent = sliderBg
+        
+        local fill = Instance.new("Frame")
+        local startPercent = (_G.Config[configKey] - minVal) / (maxVal - minVal)
+        fill.Size = UDim2.new(startPercent, 0, 1, 0)
+        fill.BackgroundColor3 = Color3.fromRGB(100, 150, 250)
+        fill.BorderSizePixel = 0
+        fill.ZIndex = 11
+        fill.Parent = sliderBg
+        
+        local fillCorner = Instance.new("UICorner")
+        fillCorner.CornerRadius = UDim.new(0, 3)
+        fillCorner.Parent = fill
+        
+        local grabber = Instance.new("Frame")
+        grabber.Size = UDim2.new(0, 16, 0, 16)
+        grabber.Position = UDim2.new(startPercent, -8, 0, -5)
+        grabber.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        grabber.BorderSizePixel = 0
+        grabber.ZIndex = 12
+        grabber.Parent = sliderBg
+        
+        local grabberCorner = Instance.new("UICorner")
+        grabberCorner.CornerRadius = UDim.new(1, 0)
+        grabberCorner.Parent = grabber
+        
+        local valueLabel = Instance.new("TextLabel")
+        valueLabel.Size = UDim2.new(0, 60, 0, 18)
+        valueLabel.Position = UDim2.new(1, -65, 0, 60)
+        valueLabel.BackgroundTransparency = 1
+        valueLabel.Text = "Value: " .. tostring(_G.Config[configKey])
+        valueLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
+        valueLabel.Font = Enum.Font.Gotham
+        valueLabel.TextSize = 12
+        valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+        valueLabel.ZIndex = 11
+        valueLabel.Parent = container
+        
+        local minLabel = Instance.new("TextLabel")
+        minLabel.Size = UDim2.new(0, 40, 0, 15)
+        minLabel.Position = UDim2.new(0, 0, 0, 48)
+        minLabel.BackgroundTransparency = 1
+        minLabel.Text = tostring(minVal)
+        minLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        minLabel.Font = Enum.Font.Gotham
+        minLabel.TextSize = 11
+        minLabel.ZIndex = 11
+        minLabel.Parent = container
+        
+        local maxLabel = Instance.new("TextLabel")
+        maxLabel.Size = UDim2.new(0, 40, 0, 15)
+        maxLabel.Position = UDim2.new(1, -40, 0, 48)
+        maxLabel.BackgroundTransparency = 1
+        maxLabel.Text = tostring(maxVal)
+        maxLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        maxLabel.Font = Enum.Font.Gotham
+        maxLabel.TextSize = 11
+        maxLabel.TextXAlignment = Enum.TextXAlignment.Right
+        maxLabel.ZIndex = 11
+        maxLabel.Parent = container
+        
+        local dragging = false
+        local dragConnection = nil
+        local endConnection = nil
+        
+        local function updateValue(value)
+            local newVal = math.clamp(value, minVal, maxVal)
+            if isInt then newVal = math.floor(newVal) end
+            if format then newVal = tonumber(string.format("%." .. format .. "f", newVal)) end
+            _G.Config[configKey] = newVal
+            inputBox.Text = tostring(newVal)
+            valueLabel.Text = "Value: " .. tostring(newVal)
+            local percent = (newVal - minVal) / (maxVal - minVal)
+            fill.Size = UDim2.new(percent, 0, 1, 0)
+            grabber.Position = UDim2.new(percent, -8, 0, -5)
+            if _G.UpdateGatling then
+                _G.UpdateGatling({[configKey] = newVal})
+            end
+        end
+        
+        local function onDrag(input)
+            local x = math.clamp((input.Position.X - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
+            updateValue(minVal + (maxVal - minVal) * x)
+        end
+        
+        sliderBg.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                onDrag(input)
+                
+                mainFrame.Draggable = false
+                
+                dragConnection = uis.InputChanged:Connect(function(input)
+                    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                        onDrag(input)
+                    end
+                end)
+                
+                endConnection = uis.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragging = false
+                        mainFrame.Draggable = true
+                        if dragConnection then dragConnection:Disconnect() end
+                        if endConnection then endConnection:Disconnect() end
+                    end
+                end)
+            end
+        end)
+        
+        grabber.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+                mainFrame.Draggable = false
+                
+                dragConnection = uis.InputChanged:Connect(function(input)
+                    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                        onDrag(input)
+                    end
+                end)
+                
+                endConnection = uis.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragging = false
+                        mainFrame.Draggable = true
+                        if dragConnection then dragConnection:Disconnect() end
+                        if endConnection then endConnection:Disconnect() end
+                    end
+                end)
+            end
+        end)
+        
+        inputBox.FocusLost:Connect(function(enterPressed)
+            local num = tonumber(inputBox.Text)
+            if num then
+                updateValue(num)
+            else
+                inputBox.Text = tostring(_G.Config[configKey])
+            end
+        end)
+        
+        return container
+    end
+
+    local function createCheckbox(parent, labelText, configKey)
+        if _G.Config[configKey] == nil then
+            return nil
+        end
+        
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(1, -10, 0, 40)
+        container.BackgroundTransparency = 1
+        container.ZIndex = 10
+        container.Parent = parent
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, -50, 0, 40)
+        label.BackgroundTransparency = 1
+        label.Text = labelText
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.Font = Enum.Font.Gotham
+        label.TextSize = 14
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.ZIndex = 11
+        label.Parent = container
+        
+        local checkBtn = Instance.new("ImageButton")
+        checkBtn.Size = UDim2.new(0, 32, 0, 32)
+        checkBtn.Position = UDim2.new(1, -35, 0, 4)
+        checkBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+        checkBtn.BackgroundTransparency = 0
+        checkBtn.Image = _G.Config[configKey] and "rbxassetid://3926305904" or ""
+        checkBtn.ScaleType = Enum.ScaleType.Fit
+        checkBtn.ZIndex = 11
+        checkBtn.Parent = container
+        
+        local checkCorner = Instance.new("UICorner")
+        checkCorner.CornerRadius = UDim.new(0, 6)
+        checkCorner.Parent = checkBtn
+        
+        checkBtn.MouseButton1Click:Connect(function()
+            _G.Config[configKey] = not _G.Config[configKey]
+            checkBtn.Image = _G.Config[configKey] and "rbxassetid://3926305904" or ""
+            if _G.UpdateGatling then
+                _G.UpdateGatling({[configKey] = _G.Config[configKey]})
+            end
+        end)
+        
+        return container
+    end
+
+    createSlider(scrollFrame, "Gatling Cooldown", 0.01, 0.5, "gatlingcooldown", false, 3)
+    createSlider(scrollFrame, "Multiply Times", 1, 100, "multiplytimes", true, nil)
+    createSlider(scrollFrame, "Aim Radius (px)", 50, 800, "aimRadius", true, nil)
+    createSlider(scrollFrame, "Max Range (stud)", 100, 2000, "maxRange", true, nil)
+    
+    local sep = Instance.new("Frame")
+    sep.Size = UDim2.new(1, -10, 0, 2)
+    sep.BackgroundColor3 = Color3.fromRGB(70, 70, 80)
+    sep.BorderSizePixel = 0
+    sep.ZIndex = 10
+    sep.Parent = scrollFrame
+    
+    createCheckbox(scrollFrame, "🔫 No Recoil", "norecoil")
+    createCheckbox(scrollFrame, "🔄 Auto Fire", "auto_fire")
+    createCheckbox(scrollFrame, "✅ Enabled", "enabled")
+    
+    listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 20)
+    end)
+    
+    local guiEnabled = true
+    uis.InputBegan:Connect(function(input, gp)
+        if gp then return end
+        if input.KeyCode == Enum.KeyCode.Insert then
+            guiEnabled = not guiEnabled
+            if guiInstance then
+                guiInstance.Enabled = guiEnabled
+            end
+        end
+    end)
+    
+end
+
+CreateGUI()

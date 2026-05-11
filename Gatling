@@ -48,9 +48,51 @@ local uis = game:GetService("UserInputService")
 local Players = game:GetService("Players")
 local camera = workspace.CurrentCamera
 local npcs = workspace:WaitForChild("NPCs")
+local starterGui = game:GetService("StarterGui")
 
 -- Table untuk menyimpan koneksi agar bisa cleanup nanti
 _G.GatlingConnections = {}
+
+-- Variable untuk menyimpan referensi GUI elements yang perlu diupdate
+local guiReferences = {
+    multiplytimesInput = nil,
+    multiplytimesFill = nil,
+    multiplytimesGrabber = nil,
+    multiplytimesValueLabel = nil
+}
+
+-- Fungsi untuk menampilkan notifikasi dengan SetCore
+local function showNotification(title, text, duration)
+    duration = duration or 3
+    local success, err = pcall(function()
+        starterGui:SetCore("SendNotification", {
+            Title = title or "Gatling Mods",
+            Text = text or "",
+            Duration = duration,
+            Button1 = "OK"
+        })
+    end)
+    if not success then
+        -- Fallback jika SetCore gagal (mungkin di beberapa executor)
+    end
+end
+
+-- Fungsi untuk update GUI Multiply Times
+local function updateMultiplyTimesGUI(value)
+    if guiReferences.multiplytimesInput then
+        guiReferences.multiplytimesInput.Text = tostring(value)
+    end
+    if guiReferences.multiplytimesValueLabel then
+        guiReferences.multiplytimesValueLabel.Text = "Value: " .. tostring(value)
+    end
+    if guiReferences.multiplytimesFill and guiReferences.multiplytimesGrabber then
+        local minVal = 1
+        local maxVal = 100
+        local percent = (value - minVal) / (maxVal - minVal)
+        guiReferences.multiplytimesFill.Size = UDim2.new(percent, 0, 1, 0)
+        guiReferences.multiplytimesGrabber.Position = UDim2.new(percent, -8, 0, -5)
+    end
+end
 
 local function getEnemyRoot(model)
     return model:FindFirstChild("HumanoidRootPart")
@@ -171,6 +213,46 @@ local inputEndedConn = uis.InputEnded:Connect(function(input)
 end)
 table.insert(_G.GatlingConnections, inputEndedConn)
 
+-- KEYBOARD SHORTCUT - Increase/Decrease MultiplyTimes dengan tombol - dan +
+local keyDownConn = uis.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    
+    -- Tombol - (Minus) untuk turunkan multiplytimes
+    if input.KeyCode == Enum.KeyCode.Minus or input.KeyCode == Enum.KeyCode.KeypadMinus then
+        local newValue = _G.Config.multiplytimes - 1
+        if newValue >= 1 then
+            _G.Config.multiplytimes = newValue
+            if _G.UpdateGatling then
+                _G.UpdateGatling({multiplytimes = newValue})
+            end
+            -- Update GUI
+            updateMultiplyTimesGUI(newValue)
+            -- Tampilkan notifikasi
+            showNotification("⚡ Multiply Times", "Decreased to: " .. newValue, 3)
+        else
+            showNotification("⚠️ Multiply Times", "Minimum value is 1", 2)
+        end
+    end
+    
+    -- Tombol + (Plus/Equals) untuk naikkan multiplytimes
+    if input.KeyCode == Enum.KeyCode.Equals or input.KeyCode == Enum.KeyCode.KeypadPlus then
+        local newValue = _G.Config.multiplytimes + 1
+        if newValue <= 100 then
+            _G.Config.multiplytimes = newValue
+            if _G.UpdateGatling then
+                _G.UpdateGatling({multiplytimes = newValue})
+            end
+            -- Update GUI
+            updateMultiplyTimesGUI(newValue)
+            -- Tampilkan notifikasi
+            showNotification("⚡ Multiply Times", "Increased to: " .. newValue, 3)
+        else
+            showNotification("⚠️ Multiply Times", "Maximum value is 100", 2)
+        end
+    end
+end)
+table.insert(_G.GatlingConnections, keyDownConn)
+
 -- Auto fire dengan cleanup system
 _G.GatlingAutoFire = _G.Config.auto_fire
 task.spawn(function()
@@ -187,6 +269,10 @@ _G.UpdateGatling = function(newConfig)
         if _G.Config[k] ~= nil then
             _G.Config[k] = v
         end
+    end
+    -- Update GUI if multiplytimes changed
+    if newConfig.multiplytimes then
+        updateMultiplyTimesGUI(newConfig.multiplytimes)
     end
     -- Update auto fire status
     if _G.Config.auto_fire then
@@ -316,6 +402,21 @@ local function CreateGUI()
         label.ZIndex = 11
         label.Parent = container
         
+        -- Tambahan label shortcut (khusus untuk multiplytimes)
+        if configKey == "multiplytimes" then
+            local shortcutLabel = Instance.new("TextLabel")
+            shortcutLabel.Size = UDim2.new(0, 150, 0, 18)
+            shortcutLabel.Position = UDim2.new(0, 0, 0, 22)
+            shortcutLabel.BackgroundTransparency = 1
+            shortcutLabel.Text = "Press - / + on keyboard"
+            shortcutLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+            shortcutLabel.Font = Enum.Font.Gotham
+            shortcutLabel.TextSize = 11
+            shortcutLabel.TextXAlignment = Enum.TextXAlignment.Left
+            shortcutLabel.ZIndex = 11
+            shortcutLabel.Parent = container
+        end
+        
         local inputBox = Instance.new("TextBox")
         inputBox.Size = UDim2.new(0, 80, 0, 28)
         inputBox.Position = UDim2.new(1, -85, 0, -3)
@@ -329,13 +430,19 @@ local function CreateGUI()
         inputBox.ZIndex = 11
         inputBox.Parent = container
         
+        -- Simpan referensi untuk multiplytimes
+        if configKey == "multiplytimes" then
+            guiReferences.multiplytimesInput = inputBox
+        end
+        
         local inputCorner = Instance.new("UICorner")
         inputCorner.CornerRadius = UDim.new(0, 4)
         inputCorner.Parent = inputBox
         
         local sliderBg = Instance.new("Frame")
         sliderBg.Size = UDim2.new(1, 0, 0, 6)
-        sliderBg.Position = UDim2.new(0, 0, 0, 35)
+        local yOffset = (configKey == "multiplytimes") and 45 or 35
+        sliderBg.Position = UDim2.new(0, 0, 0, yOffset)
         sliderBg.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
         sliderBg.BorderSizePixel = 0
         sliderBg.ZIndex = 10
@@ -353,6 +460,10 @@ local function CreateGUI()
         fill.ZIndex = 11
         fill.Parent = sliderBg
         
+        if configKey == "multiplytimes" then
+            guiReferences.multiplytimesFill = fill
+        end
+        
         local fillCorner = Instance.new("UICorner")
         fillCorner.CornerRadius = UDim.new(0, 3)
         fillCorner.Parent = fill
@@ -365,13 +476,18 @@ local function CreateGUI()
         grabber.ZIndex = 12
         grabber.Parent = sliderBg
         
+        if configKey == "multiplytimes" then
+            guiReferences.multiplytimesGrabber = grabber
+        end
+        
         local grabberCorner = Instance.new("UICorner")
         grabberCorner.CornerRadius = UDim.new(1, 0)
         grabberCorner.Parent = grabber
         
         local valueLabel = Instance.new("TextLabel")
         valueLabel.Size = UDim2.new(0, 60, 0, 18)
-        valueLabel.Position = UDim2.new(1, -65, 0, 60)
+        local valueYOffset = (configKey == "multiplytimes") and 70 or 60
+        valueLabel.Position = UDim2.new(1, -65, 0, valueYOffset)
         valueLabel.BackgroundTransparency = 1
         valueLabel.Text = "Value: " .. tostring(_G.Config[configKey])
         valueLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
@@ -381,9 +497,14 @@ local function CreateGUI()
         valueLabel.ZIndex = 11
         valueLabel.Parent = container
         
+        if configKey == "multiplytimes" then
+            guiReferences.multiplytimesValueLabel = valueLabel
+        end
+        
         local minLabel = Instance.new("TextLabel")
         minLabel.Size = UDim2.new(0, 40, 0, 15)
-        minLabel.Position = UDim2.new(0, 0, 0, 48)
+        local minYOffset = (configKey == "multiplytimes") and 58 or 48
+        minLabel.Position = UDim2.new(0, 0, 0, minYOffset)
         minLabel.BackgroundTransparency = 1
         minLabel.Text = tostring(minVal)
         minLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -394,7 +515,7 @@ local function CreateGUI()
         
         local maxLabel = Instance.new("TextLabel")
         maxLabel.Size = UDim2.new(0, 40, 0, 15)
-        maxLabel.Position = UDim2.new(1, -40, 0, 48)
+        maxLabel.Position = UDim2.new(1, -40, 0, minYOffset)
         maxLabel.BackgroundTransparency = 1
         maxLabel.Text = tostring(maxVal)
         maxLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -420,6 +541,10 @@ local function CreateGUI()
             grabber.Position = UDim2.new(percent, -8, 0, -5)
             if _G.UpdateGatling then
                 _G.UpdateGatling({[configKey] = newVal})
+            end
+            -- Tampilkan notifikasi jika yang diubah adalah multiplytimes
+            if configKey == "multiplytimes" then
+                showNotification("⚡ Multiply Times", "Changed to: " .. newVal, 3)
             end
         end
         
@@ -528,6 +653,9 @@ local function CreateGUI()
             if _G.UpdateGatling then
                 _G.UpdateGatling({[configKey] = _G.Config[configKey]})
             end
+            -- Notifikasi untuk toggle
+            local status = _G.Config[configKey] and "ON ✓" or "OFF ✗"
+            showNotification("⚙️ " .. labelText, status, 2)
         end)
         
         return container
@@ -561,9 +689,14 @@ local function CreateGUI()
             if guiInstance then
                 guiInstance.Enabled = guiEnabled
             end
+            local status = guiEnabled and "Opened" or "Closed"
+            showNotification("📟 GUI", status, 2)
         end
     end)
     table.insert(_G.GatlingConnections, insertConn)
+    
+    -- Notifikasi awal saat script jalan
+    showNotification("🔫 Gatling Mods", "Loaded successfully! Press INSERT to toggle GUI", 4)
     
 end
 

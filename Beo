@@ -14,7 +14,7 @@ local function getAllVigilantes()
     local vigilantes = {}
     
     for _, tower in pairs(towersFolder:GetChildren()) do
-        if tower.Name == "Spring Time" then
+        if tower.Name == "Referee" then
             table.insert(vigilantes, tower)
         end
     end

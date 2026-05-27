@@ -1,0 +1,227 @@
+local player = game.Players.LocalPlayer
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local userInputService = game:GetService("UserInputService")
+
+local remoteFunction = replicatedStorage:WaitForChild("RemoteFunction")
+
+local isRunning = false
+local currentCoroutine = nil
+local screenGui = nil
+local toggleButton = nil
+
+local function getAllVigilantes()
+    local towersFolder = workspace:WaitForChild("Towers")
+    local vigilantes = {}
+    
+    for _, tower in pairs(towersFolder:GetChildren()) do
+        if tower.Name == "Spring Time" then
+            table.insert(vigilantes, tower)
+        end
+    end
+    
+    return vigilantes
+end
+
+local function activateVigilanteAbility(vigilante)
+    while true do        
+        local args = {
+            "Troops",
+            "Abilities",
+            "Activate",
+            {
+                Troop = vigilante,
+                Name = "Call Of Arms",
+                Data = {}
+            }
+        }
+        
+        local success = pcall(function()
+            return remoteFunction:InvokeServer(unpack(args))
+        end)
+        
+        if success then
+            return true
+        else
+            task.wait(0.1)
+        end
+    end
+end
+
+local function vigilanteAbilityLoop()
+    local lastActivatedIndex = 0
+    local DELAY_BETWEEN_ACTIVATIONS = 9
+    
+    while isRunning do
+        local vigilantes = getAllVigilantes()
+        
+        if #vigilantes > 0 then            
+            local startIndex = (lastActivatedIndex % #vigilantes) + 1
+            
+            for i = 1, #vigilantes do
+                if not isRunning then break end
+                
+                local currentIndex = ((startIndex + i - 2) % #vigilantes) + 1
+                local vigilante = vigilantes[currentIndex]
+                
+                local success = activateVigilanteAbility(vigilante)
+                
+                if success then
+                    lastActivatedIndex = currentIndex
+                end
+                
+                if isRunning then
+                    task.wait(DELAY_BETWEEN_ACTIVATIONS)
+                end
+            end
+        else
+            task.wait(1)
+        end
+    end
+end
+
+local function startScript()
+    if isRunning then return end
+    isRunning = true
+    currentCoroutine = coroutine.wrap(vigilanteAbilityLoop)
+    currentCoroutine()
+end
+
+local function stopScript()
+    isRunning = false
+    currentCoroutine = nil
+end
+
+local function destroyGUIAndScript()
+    -- Hentikan script terlebih dahulu
+    isRunning = false
+    currentCoroutine = nil
+    
+    -- Hancurkan GUI jika ada
+    if screenGui and screenGui.Parent then
+        screenGui:Destroy()
+    end
+    
+    -- Hapus semua koneksi events (optional, untuk bersih-bersih)
+    -- Karena GUI sudah dihancurkan, semua event di dalamnya otomatis terputus
+end
+
+-- Membuat GUI
+screenGui = Instance.new("ScreenGui")
+screenGui.Name = "VigilanteGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 60, 0, 60)
+toggleButton.Position = UDim2.new(0, 20, 0.5, -30)
+toggleButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+toggleButton.Text = "OFF"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.TextSize = 18
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.Parent = screenGui
+toggleButton.AutoButtonColor = false
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(1, 0)
+buttonCorner.Parent = toggleButton
+
+local isActive = false
+
+-- Drag variables
+local dragging = false
+local dragStart = nil
+local dragStartPos = nil
+local mouseDownPos = nil
+local dragThreshold = 5
+
+toggleButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        dragStartPos = toggleButton.Position
+        mouseDownPos = input.Position
+    end
+end)
+
+userInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        toggleButton.Position = UDim2.new(
+            dragStartPos.X.Scale, 
+            dragStartPos.X.Offset + delta.X, 
+            dragStartPos.Y.Scale, 
+            dragStartPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+userInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if mouseDownPos then
+            local distance = (input.Position - mouseDownPos).Magnitude
+            if distance < dragThreshold then
+                isActive = not isActive
+                
+                if isActive then
+                    startScript()
+                    toggleButton.Text = "ON"
+                    toggleButton.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
+                else
+                    stopScript()
+                    toggleButton.Text = "OFF"
+                    toggleButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+                end
+            end
+            mouseDownPos = nil
+        end
+        dragging = false
+    end
+end)
+
+toggleButton.MouseEnter:Connect(function()
+    if isActive then
+        toggleButton.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+    end
+end)
+
+toggleButton.MouseLeave:Connect(function()
+    if isActive then
+        toggleButton.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
+    else
+        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+    end
+end)
+
+-- Fitur Ctrl + K untuk destroy GUI dan script
+userInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    -- Cek apakah tombol yang ditekan adalah Ctrl + K
+    if input.KeyCode == Enum.KeyCode.K and userInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+        destroyGUIAndScript()
+    end
+end)
+
+-- Optional: Tambahkan notifikasi bahwa script bisa di-destroy dengan Ctrl+K
+local notification = Instance.new("TextLabel")
+notification.Size = UDim2.new(0, 200, 0, 30)
+notification.Position = UDim2.new(0.5, -100, 0, 10)
+notification.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+notification.BackgroundTransparency = 0.5
+notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+notification.Text = "Press Ctrl+K to destroy"
+notification.TextSize = 12
+notification.Font = Enum.Font.Gotham
+notification.TextScaled = false
+notification.Parent = screenGui
+
+local notificationCorner = Instance.new("UICorner")
+notificationCorner.CornerRadius = UDim.new(0, 5)
+notificationCorner.Parent = notification
+
+-- Notifikasi akan hilang setelah 3 detik
+task.wait(3)
+notification:Destroy()

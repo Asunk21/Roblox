@@ -1,0 +1,43 @@
+
+	-- Ambil player dan karakter
+	local player = game.Players.LocalPlayer
+	local character = player.Character or player.CharacterAdded:Wait()
+	local humanoid = character:WaitForChild("Humanoid")
+
+	-- Simpan nilai default (walkspeed & jump power saat ini)
+	local defaultWalkSpeed = humanoid.WalkSpeed
+	local defaultJumpPower = humanoid.JumpPower
+	
+	-- Aktifkan UseJumpPower agar JumpPower berfungsi
+	humanoid.UseJumpPower = true
+	local defaultUseJumpPower = humanoid.UseJumpPower
+
+	-- Variabel untuk menyimpan status toggle
+	local isEnabled = false
+	
+	-- Simpan nilai slider terakhir
+	local currentWalkSpeed = defaultWalkSpeed
+	local currentJumpPower = defaultJumpPower
+
+	-- Fungsi untuk mengupdate humanoid (saat respawn)
+	local function updateHumanoid(newCharacter)
+		humanoid = newCharacter:WaitForChild("Humanoid")
+		if isEnabled then
+			-- Jika toggle aktif, terapkan nilai yang tersimpan
+			humanoid.WalkSpeed = currentWalkSpeed
+			humanoid.UseJumpPower = true
+			humanoid.JumpPower = currentJumpPower
+		else
+			-- Jika tidak aktif, gunakan nilai default
+			humanoid.WalkSpeed = defaultWalkSpeed
+			humanoid.UseJumpPower = defaultUseJumpPower
+			humanoid.JumpPower = defaultJumpPower
+		end
+	end
+
+	-- Jika karakter mati/respawn
+	player.CharacterAdded:Connect(updateHumanoid)
+
+	-- Toggle untuk mengaktifkan/menonaktifkan Speed and Jump
+	local toggleState = false
+	

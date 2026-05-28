@@ -5,6 +5,7 @@ local VirtualInput = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
 local lastGuiVisible = false
+local clickTask = nil
 local whiteBarLocked = false
 
 local function getUIElements()
@@ -25,10 +26,18 @@ local function getUIElements()
 end
 
 local function lockWhiteBar()
-    local WhiteBar = getUIElements()
+    local WhiteBar, parentFrame = getUIElements()
     if WhiteBar then
-        WhiteBar.Size = UDim2.new(1, 0, WhiteBar.Size.Y.Scale, WhiteBar.Size.Y.Offset)
-        WhiteBar.Position = UDim2.new(0.5, 0, WhiteBar.Position.Y.Scale, WhiteBar.Position.Y.Offset)
+        WhiteBar.Size = UDim2.new(
+            1, 0,
+            WhiteBar.Size.Y.Scale, WhiteBar.Size.Y.Offset
+        )
+        
+        WhiteBar.Position = UDim2.new(
+            0.5, 0,
+            WhiteBar.Position.Y.Scale, WhiteBar.Position.Y.Offset
+        )
+        
         whiteBarLocked = true
     end
 end
@@ -39,10 +48,15 @@ local function leftClick()
     VirtualInput:SendMouseButtonEvent(0, 0, 0, false, game, 0)
 end
 
-local function scheduleClick()
-    task.spawn(function()
-        task.wait(2)
+local function scheduleClick(delayTime)
+    if clickTask then
+        clickTask:Cancel()
+        clickTask = nil
+    end
+    
+    clickTask = task.delay(delayTime, function()
         leftClick()
+        clickTask = nil
     end)
 end
 
@@ -52,14 +66,14 @@ local function setupGUIWatcher()
     if reelingGui then
         reelingGui:GetPropertyChangedSignal("Enabled"):Connect(function()
             if not reelingGui.Enabled then
-                scheduleClick()
+                scheduleClick(0.1)
                 whiteBarLocked = false
             end
         end)
         
         reelingGui.AncestryChanged:Connect(function()
             if not reelingGui.Parent then
-                scheduleClick()
+                scheduleClick(0.1)
                 whiteBarLocked = false
             end
         end)
@@ -67,18 +81,31 @@ local function setupGUIWatcher()
 end
 
 RunService.RenderStepped:Connect(function()
-    local WhiteBar = getUIElements()
+    local WhiteBar, parentFrame = getUIElements()
 
-    if WhiteBar then
+    if WhiteBar and parentFrame then
         if not whiteBarLocked then
             lockWhiteBar()
         else
-            WhiteBar.Size = UDim2.new(1, 0, WhiteBar.Size.Y.Scale, WhiteBar.Size.Y.Offset)
-            WhiteBar.Position = UDim2.new(0.5, 0, WhiteBar.Position.Y.Scale, WhiteBar.Position.Y.Offset)
+            WhiteBar.Size = UDim2.new(
+                1, 0,
+                WhiteBar.Size.Y.Scale, WhiteBar.Size.Y.Offset
+            )
+            WhiteBar.Position = UDim2.new(
+                0.5, 0,
+                WhiteBar.Position.Y.Scale, WhiteBar.Position.Y.Offset
+            )
         end
+        
+        if clickTask then
+            clickTask:Cancel()
+            clickTask = nil
+        end
+        
         lastGuiVisible = true
+        
     elseif lastGuiVisible then
-        scheduleClick()
+        scheduleClick(2)
         lastGuiVisible = false
         whiteBarLocked = false
     end

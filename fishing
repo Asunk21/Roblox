@@ -5,7 +5,6 @@ local VirtualInput = game:GetService("VirtualInputManager")
 local player = Players.LocalPlayer
 
 local lastGuiVisible = false
-local clickTask = nil
 local whiteBarLocked = false
 
 local function getUIElements()
@@ -49,14 +48,8 @@ local function leftClick()
 end
 
 local function scheduleClick(delayTime)
-    if clickTask then
-        clickTask:Cancel()
-        clickTask = nil
-    end
-    
-    clickTask = task.delay(delayTime, function()
+    task.delay(delayTime, function()
         leftClick()
-        clickTask = nil
     end)
 end
 
@@ -66,14 +59,14 @@ local function setupGUIWatcher()
     if reelingGui then
         reelingGui:GetPropertyChangedSignal("Enabled"):Connect(function()
             if not reelingGui.Enabled then
-                scheduleClick(0.1)
+                scheduleClick(2)
                 whiteBarLocked = false
             end
         end)
         
         reelingGui.AncestryChanged:Connect(function()
             if not reelingGui.Parent then
-                scheduleClick(0.1)
+                scheduleClick(2)
                 whiteBarLocked = false
             end
         end)
@@ -97,15 +90,10 @@ RunService.RenderStepped:Connect(function()
             )
         end
         
-        if clickTask then
-            clickTask:Cancel()
-            clickTask = nil
-        end
-        
         lastGuiVisible = true
         
     elseif lastGuiVisible then
-        scheduleClick(2)
+        scheduleClick(0.1)
         lastGuiVisible = false
         whiteBarLocked = false
     end

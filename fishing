@@ -1,0 +1,93 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualInput = game:GetService("VirtualInputManager")
+
+local player = Players.LocalPlayer
+
+local lastGuiVisible = false
+local whiteBarLocked = false
+
+local function getUIElements()
+    local reelingGui = player.PlayerGui:FindFirstChild("Reeling")
+    if not reelingGui then return end
+    
+    local mainFrame = reelingGui:FindFirstChild("MainFrame")
+    if not mainFrame then return end
+    
+    local frame = mainFrame:FindFirstChild("Frame")
+    if not frame then return end
+    
+    local whiteBar = frame:FindFirstChild("WhiteBar")
+    
+    if whiteBar then
+        return whiteBar, frame
+    end
+end
+
+local function lockWhiteBar()
+    local WhiteBar = getUIElements()
+    if WhiteBar then
+        WhiteBar.Size = UDim2.new(1, 0, WhiteBar.Size.Y.Scale, WhiteBar.Size.Y.Offset)
+        WhiteBar.Position = UDim2.new(0.5, 0, WhiteBar.Position.Y.Scale, WhiteBar.Position.Y.Offset)
+        whiteBarLocked = true
+    end
+end
+
+local function leftClick()
+    VirtualInput:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+    task.wait(0.05)
+    VirtualInput:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+end
+
+local function scheduleClick()
+    task.spawn(function()
+        task.wait(0.1)
+        leftClick()
+    end)
+end
+
+local function setupGUIWatcher()
+    local reelingGui = player.PlayerGui:FindFirstChild("Reeling")
+    
+    if reelingGui then
+        reelingGui:GetPropertyChangedSignal("Enabled"):Connect(function()
+            if not reelingGui.Enabled then
+                scheduleClick()
+                whiteBarLocked = false
+            end
+        end)
+        
+        reelingGui.AncestryChanged:Connect(function()
+            if not reelingGui.Parent then
+                scheduleClick()
+                whiteBarLocked = false
+            end
+        end)
+    end
+end
+
+RunService.RenderStepped:Connect(function()
+    local WhiteBar = getUIElements()
+
+    if WhiteBar then
+        if not whiteBarLocked then
+            lockWhiteBar()
+        else
+            WhiteBar.Size = UDim2.new(1, 0, WhiteBar.Size.Y.Scale, WhiteBar.Size.Y.Offset)
+            WhiteBar.Position = UDim2.new(0.5, 0, WhiteBar.Position.Y.Scale, WhiteBar.Position.Y.Offset)
+        end
+        lastGuiVisible = true
+    elseif lastGuiVisible then
+        scheduleClick()
+        lastGuiVisible = false
+        whiteBarLocked = false
+    end
+end)
+
+setupGUIWatcher()
+
+player.PlayerGui.ChildAdded:Connect(function(child)
+    if child.Name == "Reeling" then
+        setupGUIWatcher()
+    end
+end)

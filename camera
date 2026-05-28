@@ -1,4 +1,4 @@
--- LocalScript dengan GUI Settings (Self-Destroying)
+-- LocalScript dengan GUI Settings (SHIFT + G untuk Show/Hide, Reset saat ditutup)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -7,6 +7,25 @@ local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
+-- Default values (untuk reset nanti)
+local DEFAULT_SETTINGS = {
+    useCustomCamera = false,
+    useCustomSettings = false,
+    mouseSensitivity = 0.005,
+    targetFOV = 70,
+    ZOOM_SENSITIVITY = 1,
+    SMOOTH_FACTOR = 0.05,
+    FOV_SMOOTH_FACTOR = 0.1,
+    targetYaw = 0,
+    targetPitch = 0,
+    currentYaw = 0,
+    currentPitch = 0,
+    targetZoom = 10,
+    currentZoom = 10,
+    MIN_ZOOM = 3
+}
+
+-- Current settings (bisa berubah)
 local useCustomCamera = false
 local useCustomSettings = false
 
@@ -28,104 +47,138 @@ local targetFOV = 70
 local currentFOV = 70
 local FOV_SMOOTH_FACTOR = 0.1
 
+-- Fungsi untuk reset semua pengaturan ke default
+local function resetAllSettings()
+    useCustomCamera = DEFAULT_SETTINGS.useCustomCamera
+    useCustomSettings = DEFAULT_SETTINGS.useCustomSettings
+    mouseSensitivity = DEFAULT_SETTINGS.mouseSensitivity
+    targetFOV = DEFAULT_SETTINGS.targetFOV
+    currentFOV = DEFAULT_SETTINGS.targetFOV
+    ZOOM_SENSITIVITY = DEFAULT_SETTINGS.ZOOM_SENSITIVITY
+    SMOOTH_FACTOR = DEFAULT_SETTINGS.SMOOTH_FACTOR
+    FOV_SMOOTH_FACTOR = DEFAULT_SETTINGS.FOV_SMOOTH_FACTOR
+    targetYaw = DEFAULT_SETTINGS.targetYaw
+    targetPitch = DEFAULT_SETTINGS.targetPitch
+    currentYaw = DEFAULT_SETTINGS.currentYaw
+    currentPitch = DEFAULT_SETTINGS.currentPitch
+    targetZoom = DEFAULT_SETTINGS.targetZoom
+    currentZoom = DEFAULT_SETTINGS.currentZoom
+    
+    -- Reset kamera ke default
+    camera.CameraType = Enum.CameraType.Custom
+    camera.FieldOfView = 70
+end
+
 local function getHeadPosition()
-	local character = player.Character
-	if not character then
-		return camera.Focus.Position
-	end
+    local character = player.Character
+    if not character then
+        return camera.Focus.Position
+    end
 
-	local head = character:FindFirstChild("Head")
-	if head then
-		return head.Position
-	end
+    local head = character:FindFirstChild("Head")
+    if head then
+        return head.Position
+    end
 
-	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-	if humanoidRootPart then
-		return humanoidRootPart.Position
-	end
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        return humanoidRootPart.Position
+    end
 
-	return character.PrimaryPart and character.PrimaryPart.Position or Vector3.new()
+    return character.PrimaryPart and character.PrimaryPart.Position or Vector3.new()
 end
 
 local function enableCustomCamera()
-	camera.CameraType = Enum.CameraType.Custom
-	camera.FieldOfView = currentFOV
+    camera.CameraType = Enum.CameraType.Custom
+    camera.FieldOfView = currentFOV
 end
 
 local function restoreStandardCamera()
-	camera.CameraType = Enum.CameraType.Custom
+    camera.CameraType = Enum.CameraType.Custom
 end
 
 local function updateCustomCamera()
-	if not useCustomCamera then
-		return
-	end
+    if not useCustomCamera then
+        return
+    end
 
-	local headPos = getHeadPosition()
-	if not headPos then
-		return
-	end
+    local headPos = getHeadPosition()
+    if not headPos then
+        return
+    end
 
-	currentYaw = currentYaw + (targetYaw - currentYaw) * SMOOTH_FACTOR
-	currentPitch = currentPitch + (targetPitch - currentPitch) * SMOOTH_FACTOR
-	currentZoom = currentZoom + (targetZoom - currentZoom) * SMOOTH_FACTOR
+    currentYaw = currentYaw + (targetYaw - currentYaw) * SMOOTH_FACTOR
+    currentPitch = currentPitch + (targetPitch - currentPitch) * SMOOTH_FACTOR
+    currentZoom = currentZoom + (targetZoom - currentZoom) * SMOOTH_FACTOR
 
-	local yawRotation = CFrame.Angles(0, currentYaw, 0)
-	local pitchRotation = CFrame.Angles(currentPitch, 0, 0)
-	local combinedRotation = yawRotation * pitchRotation
-	local relativeOffset = combinedRotation * Vector3.new(0, 0, currentZoom)
-	local targetCameraCFrame = CFrame.new(headPos + relativeOffset, headPos)
+    local yawRotation = CFrame.Angles(0, currentYaw, 0)
+    local pitchRotation = CFrame.Angles(currentPitch, 0, 0)
+    local combinedRotation = yawRotation * pitchRotation
+    local relativeOffset = combinedRotation * Vector3.new(0, 0, currentZoom)
+    local targetCameraCFrame = CFrame.new(headPos + relativeOffset, headPos)
 
-	camera.CFrame = targetCameraCFrame
-	camera.CameraType = Enum.CameraType.Custom
+    camera.CFrame = targetCameraCFrame
+    camera.CameraType = Enum.CameraType.Custom
 end
 
 local function updateFOV()
-	currentFOV = currentFOV + (targetFOV - currentFOV) * FOV_SMOOTH_FACTOR
+    currentFOV = currentFOV + (targetFOV - currentFOV) * FOV_SMOOTH_FACTOR
 
-	if useCustomCamera or useCustomSettings then
-		camera.FieldOfView = currentFOV
-	end
+    if useCustomCamera or useCustomSettings then
+        camera.FieldOfView = currentFOV
+    end
 end
 
 UserInputService.InputChanged:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
+    if gameProcessed then return end
 
-	if input.UserInputType == Enum.UserInputType.MouseMovement then
-		local delta = input.Delta
-		targetYaw = targetYaw - delta.X * mouseSensitivity
-		targetPitch = targetPitch - delta.Y * mouseSensitivity
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Delta
+        targetYaw = targetYaw - delta.X * mouseSensitivity
+        targetPitch = targetPitch - delta.Y * mouseSensitivity
 
-		local MAX_PITCH = math.rad(85)
-		targetPitch = math.clamp(targetPitch, -MAX_PITCH, MAX_PITCH)
-	end
+        local MAX_PITCH = math.rad(85)
+        targetPitch = math.clamp(targetPitch, -MAX_PITCH, MAX_PITCH)
+    end
 
-	if input.UserInputType == Enum.UserInputType.MouseWheel then
-		local delta = input.Position.Z
-		targetZoom = targetZoom - delta * ZOOM_SENSITIVITY
-		targetZoom = math.max(targetZoom, MIN_ZOOM)
-	end
+    if input.UserInputType == Enum.UserInputType.MouseWheel then
+        local delta = input.Position.Z
+        targetZoom = targetZoom - delta * ZOOM_SENSITIVITY
+        targetZoom = math.max(targetZoom, MIN_ZOOM)
+    end
+end)
+
+-- SHIFT + G untuk show/hide GUI
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    -- Cek apakah tombol G ditekan dan Shift sedang ditekan
+    if input.KeyCode == Enum.KeyCode.G and UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+        if screenGui and screenGui.Parent then
+            mainFrame.Visible = not mainFrame.Visible
+        end
+    end
 end)
 
 RunService.RenderStepped:Connect(function()
-	updateFOV()
+    updateFOV()
 
-	if useCustomCamera then
-		updateCustomCamera()
-	end
+    if useCustomCamera then
+        updateCustomCamera()
+    end
 end)
 
 player.CharacterAdded:Connect(function(character)
-	targetYaw = 0
-	targetPitch = 0
-	currentYaw = 0
-	currentPitch = 0
-	targetZoom = 10
-	currentZoom = 10
+    targetYaw = 0
+    targetPitch = 0
+    currentYaw = 0
+    currentPitch = 0
+    targetZoom = 10
+    currentZoom = 10
 
-	if useCustomCamera then
-		camera.FieldOfView = currentFOV
-	end
+    if useCustomCamera then
+        camera.FieldOfView = currentFOV
+    end
 end)
 
 camera.CameraType = Enum.CameraType.Custom
@@ -138,7 +191,7 @@ screenGui.Parent = player:WaitForChild("PlayerGui")
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
 mainFrame.Size = UDim2.new(0, 380, 0, 580)
-mainFrame.Position = UDim2.new(0.5, -190, 0.5, -290) -- Center the window
+mainFrame.Position = UDim2.new(0.5, -190, 0.5, -290)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 mainFrame.BackgroundTransparency = 0.05
 mainFrame.BorderSizePixel = 0
@@ -163,7 +216,7 @@ titleCorner.Parent = titleBar
 local titleText = Instance.new("TextLabel")
 titleText.Size = UDim2.new(1, 0, 1, 0)
 titleText.BackgroundTransparency = 1
-titleText.Text = "Camera Settings"
+titleText.Text = "Camera Settings (SHIFT + G)"
 titleText.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleText.Font = Enum.Font.GothamBold
 titleText.TextSize = 18
@@ -186,10 +239,12 @@ local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 4)
 closeCorner.Parent = closeButton
 
--- Destroy GUI and script when closed
+-- Ketika tombol X diklik: reset settings dulu, baru destroy GUI dan script
 closeButton.MouseButton1Click:Connect(function()
-	screenGui:Destroy()  -- Destroy the GUI
-	script:Destroy()     -- Destroy the script itself
+    resetAllSettings()  -- Reset semua pengaturan ke default
+    task.wait(0.1)     -- Kasih waktu sebentar untuk reset
+    screenGui:Destroy() -- Destroy GUI
+    script:Destroy()    -- Destroy script
 end)
 
 local dragging = false
@@ -197,24 +252,24 @@ local dragStart
 local startPos
 
 titleBar.InputBegan:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = true
-		dragStart = input.Position
-		startPos = mainFrame.Position
-	end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = mainFrame.Position
+    end
 end)
 
 titleBar.InputEnded:Connect(function(input)
-	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		dragging = false
-	end
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-	if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-		local delta = input.Position - dragStart
-		mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-	end
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
 end)
 
 local contentFrame = Instance.new("ScrollingFrame")
@@ -237,207 +292,209 @@ uiPadding.PaddingRight = UDim.new(0, 10)
 uiPadding.Parent = contentFrame
 
 local function createToggle(parent, title, description, defaultValue, callback)
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(1, 0, 0, 70)
-	frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-	frame.BackgroundTransparency = 0.3
-	frame.BorderSizePixel = 0
-	frame.Parent = parent
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 70)
+    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    frame.BackgroundTransparency = 0.3
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
-	corner.Parent = frame
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = frame
 
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(1, -60, 0, 30)
-	titleLabel.Position = UDim2.new(0, 10, 0, 5)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = title
-	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	titleLabel.Font = Enum.Font.GothamBold
-	titleLabel.TextSize = 16
-	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	titleLabel.Parent = frame
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -60, 0, 30)
+    titleLabel.Position = UDim2.new(0, 10, 0, 5)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextSize = 16
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = frame
 
-	local descLabel = Instance.new("TextLabel")
-	descLabel.Size = UDim2.new(1, -60, 0, 25)
-	descLabel.Position = UDim2.new(0, 10, 0, 35)
-	descLabel.BackgroundTransparency = 1
-	descLabel.Text = description
-	descLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-	descLabel.Font = Enum.Font.Gotham
-	descLabel.TextSize = 12
-	descLabel.TextXAlignment = Enum.TextXAlignment.Left
-	descLabel.Parent = frame
+    local descLabel = Instance.new("TextLabel")
+    descLabel.Size = UDim2.new(1, -60, 0, 25)
+    descLabel.Position = UDim2.new(0, 10, 0, 35)
+    descLabel.BackgroundTransparency = 1
+    descLabel.Text = description
+    descLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    descLabel.Font = Enum.Font.Gotham
+    descLabel.TextSize = 12
+    descLabel.TextXAlignment = Enum.TextXAlignment.Left
+    descLabel.Parent = frame
 
-	local toggleButton = Instance.new("TextButton")
-	toggleButton.Size = UDim2.new(0, 70, 0, 40)
-	toggleButton.Position = UDim2.new(1, -80, 0, 15)
-	toggleButton.BackgroundColor3 = defaultValue and Color3.fromRGB(100, 150, 255) or Color3.fromRGB(100, 100, 100)
-	toggleButton.Text = defaultValue and "ON" or "OFF"
-	toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-	toggleButton.Font = Enum.Font.GothamBold
-	toggleButton.TextSize = 18
-	toggleButton.BorderSizePixel = 0
-	toggleButton.Parent = frame
+    local toggleButton = Instance.new("TextButton")
+    toggleButton.Size = UDim2.new(0, 70, 0, 40)
+    toggleButton.Position = UDim2.new(1, -80, 0, 15)
+    toggleButton.BackgroundColor3 = defaultValue and Color3.fromRGB(100, 150, 255) or Color3.fromRGB(100, 100, 100)
+    toggleButton.Text = defaultValue and "ON" or "OFF"
+    toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleButton.Font = Enum.Font.GothamBold
+    toggleButton.TextSize = 18
+    toggleButton.BorderSizePixel = 0
+    toggleButton.Parent = frame
 
-	local toggleCorner = Instance.new("UICorner")
-	toggleCorner.CornerRadius = UDim.new(0, 4)
-	toggleCorner.Parent = toggleButton
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0, 4)
+    toggleCorner.Parent = toggleButton
 
-	local state = defaultValue
+    local state = defaultValue
 
-	toggleButton.MouseButton1Click:Connect(function()
-		state = not state
-		toggleButton.BackgroundColor3 = state and Color3.fromRGB(100, 150, 255) or Color3.fromRGB(100, 100, 100)
-		toggleButton.Text = state and "ON" or "OFF"
-		callback(state)
-	end)
+    toggleButton.MouseButton1Click:Connect(function()
+        state = not state
+        toggleButton.BackgroundColor3 = state and Color3.fromRGB(100, 150, 255) or Color3.fromRGB(100, 100, 100)
+        toggleButton.Text = state and "ON" or "OFF"
+        callback(state)
+    end)
 
-	return frame
+    return frame
 end
 
 local function createSlider(parent, title, minValue, maxValue, currentValue, callback, decimal)
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(1, 0, 0, 90)
-	frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-	frame.BackgroundTransparency = 0.3
-	frame.BorderSizePixel = 0
-	frame.Parent = parent
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 90)
+    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    frame.BackgroundTransparency = 0.3
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
 
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 6)
-	corner.Parent = frame
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = frame
 
-	local titleLabel = Instance.new("TextLabel")
-	titleLabel.Size = UDim2.new(1, 0, 0, 25)
-	titleLabel.BackgroundTransparency = 1
-	titleLabel.Text = title
-	titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-	titleLabel.Font = Enum.Font.Gotham
-	titleLabel.TextSize = 14
-	titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-	titleLabel.Parent = frame
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, 0, 0, 25)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    titleLabel.Font = Enum.Font.Gotham
+    titleLabel.TextSize = 14
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    titleLabel.Parent = frame
 
-	local valueBox = Instance.new("TextBox")
-	valueBox.Size = UDim2.new(0, 70, 0, 25)
-	valueBox.Position = UDim2.new(1, -80, 0, 0)
-	valueBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-	valueBox.Text = decimal and string.format("%.3f", currentValue) or string.format("%.1f", currentValue)
-	valueBox.TextColor3 = Color3.fromRGB(255, 200, 100)
-	valueBox.Font = Enum.Font.GothamBold
-	valueBox.TextSize = 14
-	valueBox.TextXAlignment = Enum.TextXAlignment.Center
-	valueBox.BorderSizePixel = 0
-	valueBox.Parent = frame
+    local valueBox = Instance.new("TextBox")
+    valueBox.Size = UDim2.new(0, 70, 0, 25)
+    valueBox.Position = UDim2.new(1, -80, 0, 0)
+    valueBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    valueBox.Text = decimal and string.format("%.3f", currentValue) or string.format("%.1f", currentValue)
+    valueBox.TextColor3 = Color3.fromRGB(255, 200, 100)
+    valueBox.Font = Enum.Font.GothamBold
+    valueBox.TextSize = 14
+    valueBox.TextXAlignment = Enum.TextXAlignment.Center
+    valueBox.BorderSizePixel = 0
+    valueBox.Parent = frame
 
-	local boxCorner = Instance.new("UICorner")
-	boxCorner.CornerRadius = UDim.new(0, 4)
-	boxCorner.Parent = valueBox
+    local boxCorner = Instance.new("UICorner")
+    boxCorner.CornerRadius = UDim.new(0, 4)
+    boxCorner.Parent = valueBox
 
-	local sliderFrame = Instance.new("Frame")
-	sliderFrame.Size = UDim2.new(1, 0, 0, 20)
-	sliderFrame.Position = UDim2.new(0, 0, 0, 30)
-	sliderFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-	sliderFrame.BackgroundTransparency = 0.5
-	sliderFrame.BorderSizePixel = 0
-	sliderFrame.Parent = frame
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Size = UDim2.new(1, 0, 0, 20)
+    sliderFrame.Position = UDim2.new(0, 0, 0, 30)
+    sliderFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    sliderFrame.BackgroundTransparency = 0.5
+    sliderFrame.BorderSizePixel = 0
+    sliderFrame.Parent = frame
 
-	local sliderCorner = Instance.new("UICorner")
-	sliderCorner.CornerRadius = UDim.new(0, 10)
-	sliderCorner.Parent = sliderFrame
+    local sliderCorner = Instance.new("UICorner")
+    sliderCorner.CornerRadius = UDim.new(0, 10)
+    sliderCorner.Parent = sliderFrame
 
-	local fill = Instance.new("Frame")
-	fill.Size = UDim2.new((currentValue - minValue) / (maxValue - minValue), 0, 1, 0)
-	fill.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
-	fill.BorderSizePixel = 0
-	fill.Parent = sliderFrame
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((currentValue - minValue) / (maxValue - minValue), 0, 1, 0)
+    fill.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+    fill.BorderSizePixel = 0
+    fill.Parent = sliderFrame
 
-	local fillCorner = Instance.new("UICorner")
-	fillCorner.CornerRadius = UDim.new(0, 10)
-	fillCorner.Parent = fill
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(0, 10)
+    fillCorner.Parent = fill
 
-	local sliderButton = Instance.new("TextButton")
-	sliderButton.Size = UDim2.new(0, 20, 0, 20)
-	sliderButton.Position = UDim2.new((currentValue - minValue) / (maxValue - minValue), -10, 0, 0)
-	sliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	sliderButton.Text = ""
-	sliderButton.BorderSizePixel = 0
-	sliderButton.Parent = sliderFrame
+    local sliderButton = Instance.new("TextButton")
+    sliderButton.Size = UDim2.new(0, 20, 0, 20)
+    sliderButton.Position = UDim2.new((currentValue - minValue) / (maxValue - minValue), -10, 0, 0)
+    sliderButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sliderButton.Text = ""
+    sliderButton.BorderSizePixel = 0
+    sliderButton.Parent = sliderFrame
 
-	local buttonCorner = Instance.new("UICorner")
-	buttonCorner.CornerRadius = UDim.new(1, 0)
-	buttonCorner.Parent = sliderButton
+    local buttonCorner = Instance.new("UICorner")
+    buttonCorner.CornerRadius = UDim.new(1, 0)
+    buttonCorner.Parent = sliderButton
 
-	local draggingSlider = false
+    local draggingSlider = false
 
-	local function updateValue(newValue)
-		newValue = math.clamp(newValue, minValue, maxValue)
-		if decimal then
-			newValue = math.round(newValue * 1000) / 1000
-			valueBox.Text = string.format("%.3f", newValue)
-		else
-			newValue = math.round(newValue * 10) / 10
-			valueBox.Text = string.format("%.1f", newValue)
-		end
-		local relativeX = (newValue - minValue) / (maxValue - minValue)
-		fill.Size = UDim2.new(relativeX, 0, 1, 0)
-		sliderButton.Position = UDim2.new(relativeX, -10, 0, 0)
-		callback(newValue)
-		return newValue
-	end
+    local function updateValue(newValue)
+        newValue = math.clamp(newValue, minValue, maxValue)
+        if decimal then
+            newValue = math.round(newValue * 1000) / 1000
+            valueBox.Text = string.format("%.3f", newValue)
+        else
+            newValue = math.round(newValue * 10) / 10
+            valueBox.Text = string.format("%.1f", newValue)
+        end
+        local relativeX = (newValue - minValue) / (maxValue - minValue)
+        fill.Size = UDim2.new(relativeX, 0, 1, 0)
+        sliderButton.Position = UDim2.new(relativeX, -10, 0, 0)
+        callback(newValue)
+        return newValue
+    end
 
-	local function updateSlider(input)
-		local relativeX = math.clamp((input.Position.X - sliderFrame.AbsolutePosition.X) / sliderFrame.AbsoluteSize.X, 0, 1)
-		local newValue = minValue + (relativeX * (maxValue - minValue))
-		updateValue(newValue)
-	end
+    local function updateSlider(input)
+        local relativeX = math.clamp((input.Position.X - sliderFrame.AbsolutePosition.X) / sliderFrame.AbsoluteSize.X, 0, 1)
+        local newValue = minValue + (relativeX * (maxValue - minValue))
+        updateValue(newValue)
+    end
 
-	sliderButton.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			draggingSlider = true
-			updateSlider(input)
-		end
-	end)
+    sliderButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingSlider = true
+            updateSlider(input)
+        end
+    end)
 
-	sliderButton.InputEnded:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			draggingSlider = false
-		end
-	end)
+    sliderButton.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            draggingSlider = false
+        end
+    end)
 
-	UserInputService.InputChanged:Connect(function(input)
-		if draggingSlider and input.UserInputType == Enum.UserInputType.MouseMovement then
-			updateSlider(input)
-		end
-	end)
+    UserInputService.InputChanged:Connect(function(input)
+        if draggingSlider and input.UserInputType == Enum.UserInputType.MouseMovement then
+            updateSlider(input)
+        end
+    end)
 
-	valueBox.FocusLost:Connect(function(enterPressed)
-		local num = tonumber(valueBox.Text)
-		if num then
-			updateValue(num)
-		else
-			updateValue(currentValue)
-		end
-	end)
+    valueBox.FocusLost:Connect(function(enterPressed)
+        local num = tonumber(valueBox.Text)
+        if num then
+            updateValue(num)
+        else
+            updateValue(currentValue)
+        end
+    end)
 
-	return frame
+    return frame
 end
 
+-- Buat toggle untuk Custom Settings Mode
 createToggle(contentFrame, "🔧 Custom Settings Mode", "Enable/Disable custom FOV & effects (without head lock)", false, function(state)
-	useCustomSettings = state
-	if state and not useCustomCamera then
-		camera.FieldOfView = currentFOV
-	end
+    useCustomSettings = state
+    if state and not useCustomCamera then
+        camera.FieldOfView = currentFOV
+    end
 end)
 
+-- Buat toggle untuk Custom Camera Mode
 createToggle(contentFrame, "🎥 Custom Camera Mode", "Orbit camera that follows your character's head", false, function(state)
-	useCustomCamera = state
-	if state then
-		enableCustomCamera()
-	else
-		restoreStandardCamera()
-	end
+    useCustomCamera = state
+    if state then
+        enableCustomCamera()
+    else
+        restoreStandardCamera()
+    end
 end)
 
 local separator = Instance.new("Frame")
@@ -447,24 +504,25 @@ separator.BackgroundTransparency = 0.5
 separator.BorderSizePixel = 0
 separator.Parent = contentFrame
 
+-- Sliders
 createSlider(contentFrame, "🖱️ Mouse Sensitivity", 0.001, 0.02, mouseSensitivity, function(value)
-	mouseSensitivity = value
+    mouseSensitivity = value
 end, true)
 
 createSlider(contentFrame, "👁️ Field of View (FOV)", 1, 120, targetFOV, function(value)
-	targetFOV = value
+    targetFOV = value
 end, false)
 
 createSlider(contentFrame, "📌 Zoom Sensitivity", 0.2, 3, ZOOM_SENSITIVITY, function(value)
-	ZOOM_SENSITIVITY = value
+    ZOOM_SENSITIVITY = value
 end, true)
 
 createSlider(contentFrame, "✨ Camera Smoothing", 0.02, 0.3, SMOOTH_FACTOR, function(value)
-	SMOOTH_FACTOR = value
+    SMOOTH_FACTOR = value
 end, true)
 
 createSlider(contentFrame, "🌀 FOV Smoothing", 0.02, 0.5, FOV_SMOOTH_FACTOR, function(value)
-	FOV_SMOOTH_FACTOR = value
+    FOV_SMOOTH_FACTOR = value
 end, true)
 
 local infoFrame = Instance.new("Frame")
@@ -481,7 +539,7 @@ infoCorner.Parent = infoFrame
 local infoText = Instance.new("TextLabel")
 infoText.Size = UDim2.new(1, 0, 1, 0)
 infoText.BackgroundTransparency = 1
-infoText.Text = "ℹ️ INFO:\n• SEMUA SETTING (FOV, Sensitivity, Zoom, Smoothing) bisa diubah REAL-TIME\n• Custom Settings Mode: FOV berubah tanpa orbit camera\n• Custom Camera Mode: Kamera orbit + semua setting aktif\n• Geser slider atau input angka manual - perubahan LANGSUNG terlihat"
+infoText.Text = "ℹ️ INFO:\n• Tekan SHIFT + G untuk menyembunyikan/menampilkan GUI\n• SEMUA SETTING (FOV, Sensitivity, Zoom, Smoothing) bisa diubah REAL-TIME\n• Custom Settings Mode: FOV berubah tanpa orbit camera\n• Custom Camera Mode: Kamera orbit + semua setting aktif\n• Geser slider atau input angka manual - perubahan LANGSUNG terlihat"
 infoText.TextColor3 = Color3.fromRGB(150, 150, 150)
 infoText.Font = Enum.Font.Gotham
 infoText.TextSize = 11
@@ -504,18 +562,18 @@ resetCorner.CornerRadius = UDim.new(0, 6)
 resetCorner.Parent = resetButton
 
 resetButton.MouseButton1Click:Connect(function()
-	mouseSensitivity = 0.005
-	targetFOV = 70
-	ZOOM_SENSITIVITY = 1
-	SMOOTH_FACTOR = 0.05
-	FOV_SMOOTH_FACTOR = 0.1
+    mouseSensitivity = DEFAULT_SETTINGS.mouseSensitivity
+    targetFOV = DEFAULT_SETTINGS.targetFOV
+    ZOOM_SENSITIVITY = DEFAULT_SETTINGS.ZOOM_SENSITIVITY
+    SMOOTH_FACTOR = DEFAULT_SETTINGS.SMOOTH_FACTOR
+    FOV_SMOOTH_FACTOR = DEFAULT_SETTINGS.FOV_SMOOTH_FACTOR
 
-	currentFOV = 70
+    currentFOV = DEFAULT_SETTINGS.targetFOV
 
-	if useCustomCamera or useCustomSettings then
-		camera.FieldOfView = 70
-	end
+    if useCustomCamera or useCustomSettings then
+        camera.FieldOfView = DEFAULT_SETTINGS.targetFOV
+    end
 end)
 
--- Make the GUI visible immediately since there's no toggle button
+-- Tampilkan GUI langsung
 mainFrame.Visible = true

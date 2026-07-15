@@ -16,7 +16,7 @@ local materialList = {
     "Hardened Iron", 
     "Reinforced Steel",
     "Frostbite Pick",  
-    -- "Copper Ore",
+   "Obsidian Edge",
     -- "Gold Ore",
     -- "Diamond",
     -- "Bedrock",

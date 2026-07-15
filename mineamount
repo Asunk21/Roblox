@@ -1,0 +1,718 @@
+-- LocalScript
+-- Taruh di StarterPlayerScripts
+
+local ProximityPromptService = game:GetService("ProximityPromptService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- ========== MATERIAL LIST (TAMBAHKAN MATERIAL DI SINI) ==========
+local materialList = {
+    "Weathered Wood",
+    "Hardened Iron", 
+    "Reinforced Steel",
+    "Frostbite Pick",  
+    -- "Copper Ore",
+    -- "Gold Ore",
+    -- "Diamond",
+    -- "Bedrock",
+    -- "Obsidian",
+    -- "Crystal",
+    -- "Mythril",
+    -- "Adamantite",
+    -- "Orichalcum",
+    -- "Darksteel",
+    -- "Sunstone",
+    -- "Moonstone",
+}
+
+-- Buat ScreenGui baru
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DigGUI"
+screenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 320, 0, 290)
+mainFrame.Position = UDim2.new(0.5, -160, 0.5, -145)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BackgroundTransparency = 0.1
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- Corner
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Auto Dig Settings"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 18
+title.Font = Enum.Font.GothamBold
+title.Parent = mainFrame
+
+-- Line Pemisah
+local line = Instance.new("Frame")
+line.Size = UDim2.new(0.9, 0, 0, 1)
+line.Position = UDim2.new(0.05, 0, 0, 32)
+line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+line.BackgroundTransparency = 0.5
+line.Parent = mainFrame
+
+-- ========== MATERIAL SELECTOR ==========
+-- Material Label
+local materialLabel = Instance.new("TextLabel")
+materialLabel.Size = UDim2.new(0, 100, 0, 25)
+materialLabel.Position = UDim2.new(0, 15, 0, 42)
+materialLabel.BackgroundTransparency = 1
+materialLabel.Text = "Material:"
+materialLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+materialLabel.TextSize = 14
+materialLabel.Font = Enum.Font.Gotham
+materialLabel.TextXAlignment = Enum.TextXAlignment.Left
+materialLabel.Parent = mainFrame
+
+-- Material Dropdown
+local materialDropdown = Instance.new("TextButton")
+materialDropdown.Size = UDim2.new(0, 150, 0, 25)
+materialDropdown.Position = UDim2.new(0, 100, 0, 40)
+materialDropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+materialDropdown.Text = materialList[1] or "Select Material"
+materialDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
+materialDropdown.TextSize = 14
+materialDropdown.Font = Enum.Font.Gotham
+materialDropdown.BorderSizePixel = 0
+materialDropdown.Parent = mainFrame
+
+local dropdownCorner = Instance.new("UICorner")
+dropdownCorner.CornerRadius = UDim.new(0, 4)
+dropdownCorner.Parent = materialDropdown
+
+-- Dropdown List (ukuran otomatis berdasarkan jumlah material)
+local dropdownList = Instance.new("Frame")
+dropdownList.Size = UDim2.new(0, 150, 0, #materialList * 30)
+dropdownList.Position = UDim2.new(0, 100, 0, 67)
+dropdownList.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+dropdownList.BorderSizePixel = 0
+dropdownList.Visible = false
+dropdownList.Parent = mainFrame
+
+local listCorner = Instance.new("UICorner")
+listCorner.CornerRadius = UDim.new(0, 4)
+listCorner.Parent = dropdownList
+
+-- ========== FUNGSI UNTUK MEMBUAT MATERIAL BUTTON ==========
+local materialButtons = {}
+local selectedMaterial = materialList[1] or "Weathered Wood"
+
+local function createMaterialButtons()
+    -- Hapus button lama jika ada
+    for _, btn in pairs(materialButtons) do
+        btn:Destroy()
+    end
+    materialButtons = {}
+    
+    -- Buat button baru untuk setiap material
+    for i, mat in ipairs(materialList) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 30)
+        btn.Position = UDim2.new(0, 0, 0, (i-1) * 30)
+        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        btn.Text = mat
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.TextSize = 14
+        btn.Font = Enum.Font.Gotham
+        btn.BorderSizePixel = 0
+        btn.Parent = dropdownList
+        
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 4)
+        btnCorner.Parent = btn
+        
+        -- Hover effect
+        btn.MouseEnter:Connect(function()
+            btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        end)
+        btn.MouseLeave:Connect(function()
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        end)
+        
+        -- Select material
+        btn.MouseButton1Click:Connect(function()
+            selectedMaterial = mat
+            materialDropdown.Text = mat
+            dropdownList.Visible = false
+            dropdownVisible = false
+        end)
+        
+        materialButtons[mat] = btn
+    end
+    
+    -- Update dropdown size
+    dropdownList.Size = UDim2.new(0, 150, 0, #materialList * 30)
+end
+
+-- Panggil fungsi untuk membuat button
+createMaterialButtons()
+
+-- ========== FUNGSI TAMBAH MATERIAL (PANGGIL INI UNTUK TAMBAH MATERIAL) ==========
+function addMaterial(materialName)
+    if not table.find(materialList, materialName) then
+        table.insert(materialList, materialName)
+        createMaterialButtons() -- Refresh dropdown
+        print("Material '" .. materialName .. "' telah ditambahkan!")
+        return true
+    else
+        print("Material '" .. materialName .. "' sudah ada!")
+        return false
+    end
+end
+
+function removeMaterial(materialName)
+    local index = table.find(materialList, materialName)
+    if index then
+        table.remove(materialList, index)
+        createMaterialButtons() -- Refresh dropdown
+        if selectedMaterial == materialName then
+            selectedMaterial = materialList[1] or "Weathered Wood"
+            materialDropdown.Text = selectedMaterial
+        end
+        print("Material '" .. materialName .. "' telah dihapus!")
+        return true
+    else
+        print("Material '" .. materialName .. "' tidak ditemukan!")
+        return false
+    end
+end
+
+-- ========== AUTO DIG TOGGLE ==========
+-- Toggle Label
+local autoDigLabel = Instance.new("TextLabel")
+autoDigLabel.Size = UDim2.new(0, 100, 0, 25)
+autoDigLabel.Position = UDim2.new(0, 15, 0, 80)
+autoDigLabel.BackgroundTransparency = 1
+autoDigLabel.Text = "Auto Dig:"
+autoDigLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+autoDigLabel.TextSize = 14
+autoDigLabel.Font = Enum.Font.Gotham
+autoDigLabel.TextXAlignment = Enum.TextXAlignment.Left
+autoDigLabel.Parent = mainFrame
+
+-- Toggle Button Auto Dig
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 60, 0, 25)
+toggleButton.Position = UDim2.new(0, 100, 0, 78)
+toggleButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+toggleButton.Text = "ON"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.TextSize = 14
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.BorderSizePixel = 0
+toggleButton.Parent = mainFrame
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 4)
+toggleCorner.Parent = toggleButton
+
+-- ========== PROXIMITY TOGGLE ==========
+-- Proximity Label
+local proximityLabel = Instance.new("TextLabel")
+proximityLabel.Size = UDim2.new(0, 120, 0, 25)
+proximityLabel.Position = UDim2.new(0, 15, 0, 113)
+proximityLabel.BackgroundTransparency = 1
+proximityLabel.Text = "Instant Proximity:"
+proximityLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+proximityLabel.TextSize = 14
+proximityLabel.Font = Enum.Font.Gotham
+proximityLabel.TextXAlignment = Enum.TextXAlignment.Left
+proximityLabel.Parent = mainFrame
+
+-- Toggle Button Proximity
+local proximityToggle = Instance.new("TextButton")
+proximityToggle.Size = UDim2.new(0, 60, 0, 25)
+proximityToggle.Position = UDim2.new(0, 140, 0, 111)
+proximityToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+proximityToggle.Text = "ON"
+proximityToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+proximityToggle.TextSize = 14
+proximityToggle.Font = Enum.Font.GothamBold
+proximityToggle.BorderSizePixel = 0
+proximityToggle.Parent = mainFrame
+
+local proximityCorner = Instance.new("UICorner")
+proximityCorner.CornerRadius = UDim.new(0, 4)
+proximityCorner.Parent = proximityToggle
+
+-- ========== SELL TOGGLE ==========
+-- Sell Label
+local sellLabel = Instance.new("TextLabel")
+sellLabel.Size = UDim2.new(0, 100, 0, 25)
+sellLabel.Position = UDim2.new(0, 15, 0, 146)
+sellLabel.BackgroundTransparency = 1
+sellLabel.Text = "Auto Sell:"
+sellLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+sellLabel.TextSize = 14
+sellLabel.Font = Enum.Font.Gotham
+sellLabel.TextXAlignment = Enum.TextXAlignment.Left
+sellLabel.Parent = mainFrame
+
+-- Toggle Button Sell
+local sellToggle = Instance.new("TextButton")
+sellToggle.Size = UDim2.new(0, 60, 0, 25)
+sellToggle.Position = UDim2.new(0, 100, 0, 144)
+sellToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+sellToggle.Text = "ON"
+sellToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+sellToggle.TextSize = 14
+sellToggle.Font = Enum.Font.GothamBold
+sellToggle.BorderSizePixel = 0
+sellToggle.Parent = mainFrame
+
+local sellCorner = Instance.new("UICorner")
+sellCorner.CornerRadius = UDim.new(0, 4)
+sellCorner.Parent = sellToggle
+
+-- ========== DIG MODE SELECTOR ==========
+-- Mode Label
+local modeLabel = Instance.new("TextLabel")
+modeLabel.Size = UDim2.new(0, 100, 0, 25)
+modeLabel.Position = UDim2.new(0, 180, 0, 146)
+modeLabel.BackgroundTransparency = 1
+modeLabel.Text = "Dig Mode:"
+modeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+modeLabel.TextSize = 14
+modeLabel.Font = Enum.Font.Gotham
+modeLabel.TextXAlignment = Enum.TextXAlignment.Left
+modeLabel.Parent = mainFrame
+
+-- Mode Dropdown
+local modeDropdown = Instance.new("TextButton")
+modeDropdown.Size = UDim2.new(0, 100, 0, 25)
+modeDropdown.Position = UDim2.new(0, 200, 0, 144)
+modeDropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+modeDropdown.Text = "Forward"
+modeDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
+modeDropdown.TextSize = 14
+modeDropdown.Font = Enum.Font.Gotham
+modeDropdown.BorderSizePixel = 0
+modeDropdown.Parent = mainFrame
+
+local modeCorner = Instance.new("UICorner")
+modeCorner.CornerRadius = UDim.new(0, 4)
+modeCorner.Parent = modeDropdown
+
+-- Mode Dropdown List
+local modeList = Instance.new("Frame")
+modeList.Size = UDim2.new(0, 100, 0, 60)
+modeList.Position = UDim2.new(0, 200, 0, 171)
+modeList.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+modeList.BorderSizePixel = 0
+modeList.Visible = false
+modeList.Parent = mainFrame
+
+local modeListCorner = Instance.new("UICorner")
+modeListCorner.CornerRadius = UDim.new(0, 4)
+modeListCorner.Parent = modeList
+
+-- Mode options
+local modes = {"Forward", "Cursor"}
+local modeButtons = {}
+
+for i, mode in ipairs(modes) do
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 30)
+    btn.Position = UDim2.new(0, 0, 0, (i-1) * 30)
+    btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    btn.Text = mode
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 14
+    btn.Font = Enum.Font.Gotham
+    btn.BorderSizePixel = 0
+    btn.Parent = modeList
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 4)
+    btnCorner.Parent = btn
+    
+    btn.MouseEnter:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    end)
+    btn.MouseLeave:Connect(function()
+        btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    end)
+    
+    btn.MouseButton1Click:Connect(function()
+        digMode = mode
+        modeDropdown.Text = mode
+        modeList.Visible = false
+        modeDropdownVisible = false
+    end)
+    
+    modeButtons[mode] = btn
+end
+
+-- ========== DISTANCE SLIDER ==========
+-- Distance Label
+local distanceLabel = Instance.new("TextLabel")
+distanceLabel.Size = UDim2.new(0, 100, 0, 20)
+distanceLabel.Position = UDim2.new(0, 15, 0, 181)
+distanceLabel.BackgroundTransparency = 1
+distanceLabel.Text = "Distance: 5"
+distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+distanceLabel.TextSize = 14
+distanceLabel.Font = Enum.Font.Gotham
+distanceLabel.TextXAlignment = Enum.TextXAlignment.Left
+distanceLabel.Parent = mainFrame
+
+-- Slider
+local slider = Instance.new("Frame")
+slider.Size = UDim2.new(0, 180, 0, 4)
+slider.Position = UDim2.new(0, 15, 0, 206)
+slider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+slider.BorderSizePixel = 0
+slider.Parent = mainFrame
+
+local sliderCorner = Instance.new("UICorner")
+sliderCorner.CornerRadius = UDim.new(0, 2)
+sliderCorner.Parent = slider
+
+-- Slider Fill
+local sliderFill = Instance.new("Frame")
+sliderFill.Size = UDim2.new(0.25, 0, 1, 0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+sliderFill.BorderSizePixel = 0
+sliderFill.Parent = slider
+
+local fillCorner = Instance.new("UICorner")
+fillCorner.CornerRadius = UDim.new(0, 2)
+fillCorner.Parent = sliderFill
+
+-- Slider Button
+local sliderButton = Instance.new("TextButton")
+sliderButton.Size = UDim2.new(0, 16, 0, 16)
+sliderButton.Position = UDim2.new(0.25, -8, 0.5, -8)
+sliderButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+sliderButton.Text = ""
+sliderButton.BorderSizePixel = 0
+sliderButton.Parent = slider
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(1, 0)
+buttonCorner.Parent = sliderButton
+
+-- Distance Value
+local distanceValue = Instance.new("TextLabel")
+distanceValue.Size = UDim2.new(0, 40, 0, 20)
+distanceValue.Position = UDim2.new(0, 210, 0, 181)
+distanceValue.BackgroundTransparency = 1
+distanceValue.Text = "5"
+distanceValue.TextColor3 = Color3.fromRGB(0, 200, 100)
+distanceValue.TextSize = 16
+distanceValue.Font = Enum.Font.GothamBold
+distanceValue.TextXAlignment = Enum.TextXAlignment.Right
+distanceValue.Parent = mainFrame
+
+-- ========== SELL DELAY SLIDER ==========
+-- Sell Delay Label
+local delayLabel = Instance.new("TextLabel")
+delayLabel.Size = UDim2.new(0, 120, 0, 20)
+delayLabel.Position = UDim2.new(0, 15, 0, 228)
+delayLabel.BackgroundTransparency = 1
+delayLabel.Text = "Sell Delay: 1s"
+delayLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+delayLabel.TextSize = 14
+delayLabel.Font = Enum.Font.Gotham
+delayLabel.TextXAlignment = Enum.TextXAlignment.Left
+delayLabel.Parent = mainFrame
+
+-- Delay Value
+local delayValue = Instance.new("TextLabel")
+delayValue.Size = UDim2.new(0, 40, 0, 20)
+delayValue.Position = UDim2.new(0, 210, 0, 228)
+delayValue.BackgroundTransparency = 1
+delayValue.Text = "1"
+delayValue.TextColor3 = Color3.fromRGB(0, 200, 100)
+delayValue.TextSize = 16
+delayValue.Font = Enum.Font.GothamBold
+delayValue.TextXAlignment = Enum.TextXAlignment.Right
+delayValue.Parent = mainFrame
+
+-- Delay Slider
+local delaySlider = Instance.new("Frame")
+delaySlider.Size = UDim2.new(0, 180, 0, 4)
+delaySlider.Position = UDim2.new(0, 15, 0, 253)
+delaySlider.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+delaySlider.BorderSizePixel = 0
+delaySlider.Parent = mainFrame
+
+local delaySliderCorner = Instance.new("UICorner")
+delaySliderCorner.CornerRadius = UDim.new(0, 2)
+delaySliderCorner.Parent = delaySlider
+
+-- Delay Slider Fill
+local delaySliderFill = Instance.new("Frame")
+delaySliderFill.Size = UDim2.new(0.1, 0, 1, 0)
+delaySliderFill.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+delaySliderFill.BorderSizePixel = 0
+delaySliderFill.Parent = delaySlider
+
+local delayFillCorner = Instance.new("UICorner")
+delayFillCorner.CornerRadius = UDim.new(0, 2)
+delayFillCorner.Parent = delaySliderFill
+
+-- Delay Slider Button
+local delaySliderButton = Instance.new("TextButton")
+delaySliderButton.Size = UDim2.new(0, 16, 0, 16)
+delaySliderButton.Position = UDim2.new(0.1, -8, 0.5, -8)
+delaySliderButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+delaySliderButton.Text = ""
+delaySliderButton.BorderSizePixel = 0
+delaySliderButton.Parent = delaySlider
+
+local delayButtonCorner = Instance.new("UICorner")
+delayButtonCorner.CornerRadius = UDim.new(1, 0)
+delayButtonCorner.Parent = delaySliderButton
+
+-- ========== VARIABLES ==========
+local isAutoDigEnabled = true
+local isProximityEnabled = true
+local isSellEnabled = true
+local digMode = "Forward"
+local distance = 5
+local sellDelay = 1
+local minDistance = 1
+local maxDistance = 20
+local minDelay = 0.5
+local maxDelay = 5
+local dragging = false
+local delayDragging = false
+local dropdownVisible = false
+local modeDropdownVisible = false
+
+-- ========== DROPDOWN FUNCTIONS ==========
+-- Toggle material dropdown
+materialDropdown.MouseButton1Click:Connect(function()
+    dropdownVisible = not dropdownVisible
+    dropdownList.Visible = dropdownVisible
+    modeList.Visible = false
+    modeDropdownVisible = false
+end)
+
+-- Toggle mode dropdown
+modeDropdown.MouseButton1Click:Connect(function()
+    modeDropdownVisible = not modeDropdownVisible
+    modeList.Visible = modeDropdownVisible
+    dropdownList.Visible = false
+    dropdownVisible = false
+end)
+
+-- Close dropdown when clicking outside
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if dropdownVisible or modeDropdownVisible then
+            local mousePos = Vector2.new(mouse.X, mouse.Y)
+            
+            if dropdownVisible then
+                local dropdownPos = dropdownList.AbsolutePosition
+                local dropdownSize = dropdownList.AbsoluteSize
+                if not (mousePos.X >= dropdownPos.X and mousePos.X <= dropdownPos.X + dropdownSize.X and
+                        mousePos.Y >= dropdownPos.Y and mousePos.Y <= dropdownPos.Y + dropdownSize.Y) then
+                    dropdownList.Visible = false
+                    dropdownVisible = false
+                end
+            end
+            
+            if modeDropdownVisible then
+                local modePos = modeList.AbsolutePosition
+                local modeSize = modeList.AbsoluteSize
+                if not (mousePos.X >= modePos.X and mousePos.X <= modePos.X + modeSize.X and
+                        mousePos.Y >= modePos.Y and mousePos.Y <= modePos.Y + modeSize.Y) then
+                    modeList.Visible = false
+                    modeDropdownVisible = false
+                end
+            end
+        end
+    end
+end)
+
+-- ========== AUTO DIG TOGGLE FUNCTION ==========
+toggleButton.MouseButton1Click:Connect(function()
+    isAutoDigEnabled = not isAutoDigEnabled
+    if isAutoDigEnabled then
+        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        toggleButton.Text = "ON"
+    else
+        toggleButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        toggleButton.Text = "OFF"
+    end
+end)
+
+-- ========== PROXIMITY TOGGLE FUNCTION (FIXED) ==========
+-- Fungsi untuk mengubah semua ProximityPrompt menjadi instant
+local function setInstantProximity()
+    for i, v in ipairs(game:GetService("Workspace"):GetDescendants()) do
+        if v:IsA("ProximityPrompt") then
+            v.HoldDuration = 0
+        end
+    end
+end
+
+-- Fungsi untuk mengembalikan ProximityPrompt ke default
+local function resetProximity()
+    for i, v in ipairs(game:GetService("Workspace"):GetDescendants()) do
+        if v:IsA("ProximityPrompt") then
+            v.HoldDuration = 1
+        end
+    end
+end
+
+-- Panggil fungsi pertama kali
+setInstantProximity()
+
+-- Pantau jika ada ProximityPrompt baru yang masuk
+game:GetService("Workspace").DescendantAdded:Connect(function(descendant)
+    if isProximityEnabled and descendant:IsA("ProximityPrompt") then
+        descendant.HoldDuration = 0
+    end
+end)
+
+-- Toggle Proximity
+proximityToggle.MouseButton1Click:Connect(function()
+    isProximityEnabled = not isProximityEnabled
+    if isProximityEnabled then
+        proximityToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        proximityToggle.Text = "ON"
+        setInstantProximity() -- Aktifkan lagi jika ada yang berubah
+    else
+        proximityToggle.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        proximityToggle.Text = "OFF"
+        resetProximity() -- Kembalikan ke default
+    end
+end)
+
+-- ========== SELL TOGGLE FUNCTION ==========
+sellToggle.MouseButton1Click:Connect(function()
+    isSellEnabled = not isSellEnabled
+    if isSellEnabled then
+        sellToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        sellToggle.Text = "ON"
+    else
+        sellToggle.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+        sellToggle.Text = "OFF"
+    end
+end)
+
+-- ========== DISTANCE SLIDER FUNCTION ==========
+sliderButton.MouseButton1Down:Connect(function()
+    dragging = true
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+        delayDragging = false
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    if dragging then
+        local sliderPos = slider.AbsolutePosition.X
+        local sliderSize = slider.AbsoluteSize.X
+        local mouseX = mouse.X
+        
+        local percent = math.clamp((mouseX - sliderPos) / sliderSize, 0, 1)
+        sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        sliderButton.Position = UDim2.new(percent, -8, 0.5, -8)
+        
+        distance = math.round(minDistance + (maxDistance - minDistance) * percent)
+        distanceValue.Text = tostring(distance)
+        distanceLabel.Text = "Distance: " .. tostring(distance)
+    end
+end)
+
+-- ========== DELAY SLIDER FUNCTION ==========
+delaySliderButton.MouseButton1Down:Connect(function()
+    delayDragging = true
+end)
+
+RunService.RenderStepped:Connect(function()
+    if delayDragging then
+        local sliderPos = delaySlider.AbsolutePosition.X
+        local sliderSize = delaySlider.AbsoluteSize.X
+        local mouseX = mouse.X
+        
+        local percent = math.clamp((mouseX - sliderPos) / sliderSize, 0, 1)
+        delaySliderFill.Size = UDim2.new(percent, 0, 1, 0)
+        delaySliderButton.Position = UDim2.new(percent, -8, 0.5, -8)
+        
+        sellDelay = math.round((minDelay + (maxDelay - minDelay) * percent) * 2) / 2
+        if sellDelay < 0.5 then sellDelay = 0.5 end
+        delayValue.Text = tostring(sellDelay)
+        delayLabel.Text = "Sell Delay: " .. tostring(sellDelay) .. "s"
+    end
+end)
+
+-- ========== AUTO DIG FUNCTION (FIXED) ==========
+RunService.Heartbeat:Connect(function()
+    if isAutoDigEnabled then
+        local character = player.Character
+        if character then
+            local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+            if humanoidRootPart then
+                local digPosition
+                
+                if digMode == "Cursor" then
+                    -- Ambil posisi mouse di 3D
+                    local mousePos = mouse.Hit.Position
+                    local mouseTarget = mouse.Target
+                    
+                    -- Jika ada target, ambil posisi target (termasuk ketinggian)
+                    if mouseTarget then
+                        digPosition = mouseTarget.Position
+                    else
+                        -- Jika tidak ada target, gunakan posisi mouse dengan Y dari karakter
+                        digPosition = Vector3.new(mousePos.X, humanoidRootPart.Position.Y, mousePos.Z)
+                    end
+                    
+                    -- Opsional: tambahkan sedikit offset ke atas agar menggali di permukaan
+                    digPosition = digPosition + Vector3.new(0, 2, 0)
+                else
+                    -- Mode Forward
+                    digPosition = humanoidRootPart.Position + humanoidRootPart.CFrame.LookVector * distance
+                end
+                
+                local args = {selectedMaterial, digPosition}
+                ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("DigRequest"):FireServer(unpack(args))
+            end
+        end
+    end
+end)
+
+-- ========== SELL FUNCTION ==========
+coroutine.wrap(function()
+    while wait(sellDelay) do
+        if isSellEnabled then
+            local args = {"all"}
+            ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SellRequest"):FireServer(unpack(args))
+        end
+    end
+end)()
+
+-- ========== HAPUS PROXIMITY PROMPT SERVICE LAMA ==========
+-- Bagian ini sudah dihapus dan diganti dengan metode HoldDuration = 0
+-- ProximityPromptService.PromptButtonHoldBegan sudah tidak digunakan lagi
+
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]

@@ -1,0 +1,166 @@
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local oldGui = playerGui:FindFirstChild("AutoCraftGUI")
+if oldGui then oldGui:Destroy() end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AutoCraftGUI"
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.Parent = playerGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 160, 0, 100)
+mainFrame.Position = UDim2.new(0, 10, 0.5, -50)
+mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = Color3.fromRGB(80, 80, 80)
+stroke.Thickness = 1
+stroke.Parent = mainFrame
+
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(1, -40, 0, 24)
+title.Position = UDim2.new(0, 8, 0, 4)
+title.BackgroundTransparency = 1
+title.Text = "Auto Craft"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 14
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = mainFrame
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Name = "CloseBtn"
+closeBtn.Size = UDim2.new(0, 24, 0, 24)
+closeBtn.Position = UDim2.new(1, -28, 0, 4)
+closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+closeBtn.Text = "X"
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.TextSize = 14
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.BorderSizePixel = 0
+closeBtn.Parent = mainFrame
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeBtn
+
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Name = "ToggleBtn"
+toggleBtn.Size = UDim2.new(1, -16, 0, 30)
+toggleBtn.Position = UDim2.new(0, 8, 0, 34)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+toggleBtn.Text = "OFF"
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.TextSize = 14
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.BorderSizePixel = 0
+toggleBtn.Parent = mainFrame
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 6)
+toggleCorner.Parent = toggleBtn
+
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "StatusLabel"
+statusLabel.Size = UDim2.new(1, -16, 0, 20)
+statusLabel.Position = UDim2.new(0, 8, 0, 68)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Status: Idle"
+statusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+statusLabel.TextSize = 11
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Parent = mainFrame
+
+local remotes = ReplicatedStorage:WaitForChild("CraftingAyam"):WaitForChild("Remotes")
+local requestCraft = remotes:WaitForChild("RequestCraft")
+local submitCraft = remotes:WaitForChild("SubmitCraft")
+
+local isRunning = false
+local loopThread = nil
+local DELAY = 1
+
+local function setStatus(text, color)
+    statusLabel.Text = "Status: " .. text
+    statusLabel.TextColor3 = color or Color3.fromRGB(180, 180, 180)
+end
+
+local function startLoop()
+    if isRunning then return end
+    isRunning = true
+    toggleBtn.Text = "ON"
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 180, 80)
+    setStatus("Running", Color3.fromRGB(100, 255, 120))
+
+    loopThread = task.spawn(function()
+        while isRunning do
+            pcall(function()
+                requestCraft:InvokeServer("ProcessingStation1")
+            end)
+            pcall(function()
+                submitCraft:InvokeServer("ProcessingStation1")
+            end)
+            task.wait(DELAY)
+        end
+    end)
+end
+
+local function stopLoop()
+    isRunning = false
+    toggleBtn.Text = "OFF"
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    setStatus("Idle", Color3.fromRGB(180, 180, 180))
+    if loopThread then
+        task.cancel(loopThread)
+        loopThread = nil
+    end
+end
+
+toggleBtn.MouseButton1Click:Connect(function()
+    if isRunning then
+        stopLoop()
+    else
+        startLoop()
+    end
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+    stopLoop()
+    screenGui:Destroy()
+    script:Destroy()
+end)
+
+local light = Instance.new("UIGradient")
+light.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(45, 45, 45)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(25, 25, 25)),
+}
+light.Rotation = 90
+light.Parent = mainFrame
+
+toggleBtn.MouseEnter:Connect(function()
+    if not isRunning then
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    end
+end)
+
+toggleBtn.MouseLeave:Connect(function()
+    if not isRunning then
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    end
+end)

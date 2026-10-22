@@ -174,7 +174,7 @@ local function start()
             pcall(function()
                 ReplicatedStorage.CraftingAyam.Remotes.SubmitCraft:InvokeServer("ProcessingStation1")
             end)
-            task.wait(5)
+            task.wait(2)
             if not running then break end
 
             -- ===== BARU LANJUT STATION 2 =====
@@ -189,7 +189,7 @@ local function start()
             pcall(function()
                 ReplicatedStorage.CraftingAyam.Remotes.SubmitCraft:InvokeServer("ProcessingStation2")
             end)
-            task.wait(5)
+            task.wait(2)
             if not running then break end
 
             status.Text = "Loop ulang..."

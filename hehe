@@ -13,8 +13,8 @@ gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 170, 0, 130)
-frame.Position = UDim2.new(0, 10, 0.5, -65)
+frame.Size = UDim2.new(0, 190, 0, 210)
+frame.Position = UDim2.new(0, 10, 0.5, -105)
 frame.BackgroundColor3 = Color3.fromRGB(255, 220, 80)
 frame.BorderSizePixel = 0
 frame.Active = true
@@ -69,7 +69,7 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, -40, 1, 0)
 title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "SIPALING ERPI"
+title.Text = "AUTO CRAFT"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 18
 title.Font = Enum.Font.FredokaOne
@@ -103,9 +103,63 @@ closeStroke.Color = Color3.fromRGB(120, 20, 20)
 closeStroke.Thickness = 2
 closeStroke.Parent = close
 
+local modeLabel = Instance.new("TextLabel")
+modeLabel.Size = UDim2.new(1, -20, 0, 18)
+modeLabel.Position = UDim2.new(0, 10, 0, 36)
+modeLabel.BackgroundTransparency = 1
+modeLabel.Text = "Mode:"
+modeLabel.TextColor3 = Color3.fromRGB(120, 80, 0)
+modeLabel.TextSize = 13
+modeLabel.Font = Enum.Font.FredokaOne
+modeLabel.TextXAlignment = Enum.TextXAlignment.Left
+modeLabel.ZIndex = 2
+modeLabel.Parent = frame
+
+local mode1Btn = Instance.new("TextButton")
+mode1Btn.Size = UDim2.new(1, -20, 0, 32)
+mode1Btn.Position = UDim2.new(0, 10, 0, 56)
+mode1Btn.BackgroundColor3 = Color3.fromRGB(120, 200, 80)
+mode1Btn.Text = "Mode 1 (Station1 + Station1)"
+mode1Btn.TextColor3 = Color3.new(1, 1, 1)
+mode1Btn.TextSize = 13
+mode1Btn.Font = Enum.Font.FredokaOne
+mode1Btn.BorderSizePixel = 0
+mode1Btn.ZIndex = 2
+mode1Btn.Parent = frame
+
+local mode1Corner = Instance.new("UICorner")
+mode1Corner.CornerRadius = UDim.new(0, 10)
+mode1Corner.Parent = mode1Btn
+
+local mode1Stroke = Instance.new("UIStroke")
+mode1Stroke.Color = Color3.fromRGB(40, 100, 20)
+mode1Stroke.Thickness = 2
+mode1Stroke.Parent = mode1Btn
+
+local mode2Btn = Instance.new("TextButton")
+mode2Btn.Size = UDim2.new(1, -20, 0, 32)
+mode2Btn.Position = UDim2.new(0, 10, 0, 92)
+mode2Btn.BackgroundColor3 = Color3.fromRGB(180, 180, 180)
+mode2Btn.Text = "Mode 2 (Station2 + Station1)"
+mode2Btn.TextColor3 = Color3.new(1, 1, 1)
+mode2Btn.TextSize = 13
+mode2Btn.Font = Enum.Font.FredokaOne
+mode2Btn.BorderSizePixel = 0
+mode2Btn.ZIndex = 2
+mode2Btn.Parent = frame
+
+local mode2Corner = Instance.new("UICorner")
+mode2Corner.CornerRadius = UDim.new(0, 10)
+mode2Corner.Parent = mode2Btn
+
+local mode2Stroke = Instance.new("UIStroke")
+mode2Stroke.Color = Color3.fromRGB(90, 90, 90)
+mode2Stroke.Thickness = 2
+mode2Stroke.Parent = mode2Btn
+
 local btn = Instance.new("TextButton")
 btn.Size = UDim2.new(1, -20, 0, 46)
-btn.Position = UDim2.new(0, 10, 0, 38)
+btn.Position = UDim2.new(0, 10, 0, 132)
 btn.BackgroundColor3 = Color3.fromRGB(120, 200, 80)
 btn.Text = "OFF"
 btn.TextColor3 = Color3.new(1, 1, 1)
@@ -137,24 +191,51 @@ status.Parent = frame
 
 local running = false
 local thread = nil
+local mode = 1
+
+local function updateModeUI()
+    if mode == 1 then
+        mode1Btn.BackgroundColor3 = Color3.fromRGB(120, 200, 80)
+        mode1Stroke.Color = Color3.fromRGB(40, 100, 20)
+        mode2Btn.BackgroundColor3 = Color3.fromRGB(180, 180, 180)
+        mode2Stroke.Color = Color3.fromRGB(90, 90, 90)
+    else
+        mode1Btn.BackgroundColor3 = Color3.fromRGB(180, 180, 180)
+        mode1Stroke.Color = Color3.fromRGB(90, 90, 90)
+        mode2Btn.BackgroundColor3 = Color3.fromRGB(120, 200, 80)
+        mode2Stroke.Color = Color3.fromRGB(40, 100, 20)
+    end
+end
 
 local function start()
     running = true
     btn.Text = "ON"
     btn.BackgroundColor3 = Color3.fromRGB(255, 90, 90)
     btnStroke.Color = Color3.fromRGB(120, 20, 20)
-    status.Text = "Running..."
+    status.Text = "Running... (Mode " .. mode .. ")"
     status.TextColor3 = Color3.fromRGB(200, 40, 40)
+    local currentMode = mode
     thread = task.spawn(function()
         while running do
-            pcall(function()
-                ReplicatedStorage.CraftingAyam.Remotes.RequestCraft:InvokeServer("ProcessingStation1")
-            end)
-            task.wait(1)
-            pcall(function()
-                ReplicatedStorage.CraftingAyam.Remotes.SubmitCraft:InvokeServer("ProcessingStation1")
-            end)
-            task.wait(5)
+            if currentMode == 1 then
+                pcall(function()
+                    ReplicatedStorage.CraftingAyam.Remotes.RequestCraft:InvokeServer("ProcessingStation1")
+                end)
+                task.wait(1)
+                pcall(function()
+                    ReplicatedStorage.CraftingAyam.Remotes.SubmitCraft:InvokeServer("ProcessingStation1")
+                end)
+                task.wait(1)
+            else
+                pcall(function()
+                    ReplicatedStorage.CraftingAyam.Remotes.RequestCraft:InvokeServer("ProcessingStation2")
+                end)
+                task.wait(1)
+                pcall(function()
+                    ReplicatedStorage.CraftingAyam.Remotes.SubmitCraft:InvokeServer("ProcessingStation2")
+                end)
+                task.wait(5)
+            end
         end
     end)
 end
@@ -172,6 +253,18 @@ local function stop()
     end
 end
 
+mode1Btn.MouseButton1Click:Connect(function()
+    if running then return end
+    mode = 1
+    updateModeUI()
+end)
+
+mode2Btn.MouseButton1Click:Connect(function()
+    if running then return end
+    mode = 2
+    updateModeUI()
+end)
+
 btn.MouseButton1Click:Connect(function()
     if running then stop() else start() end
 end)
@@ -181,3 +274,5 @@ close.MouseButton1Click:Connect(function()
     gui:Destroy()
     script:Destroy()
 end)
+
+updateModeUI()

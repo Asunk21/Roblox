@@ -13,8 +13,8 @@ gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 140, 0, 90)
-frame.Position = UDim2.new(0, 10, 0.5, -45)
+frame.Size = UDim2.new(0, 140, 0, 110)
+frame.Position = UDim2.new(0, 10, 0.5, -55)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 frame.Active = true
@@ -22,6 +22,17 @@ frame.Draggable = true
 frame.Parent = gui
 
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -30, 0, 20)
+title.Position = UDim2.new(0, 8, 0, 4)
+title.BackgroundTransparency = 1
+title.Text = "Auto Craft by mok"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextSize = 14
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = frame
 
 local close = Instance.new("TextButton")
 close.Size = UDim2.new(0, 20, 0, 20)
@@ -47,6 +58,16 @@ btn.BorderSizePixel = 0
 btn.Parent = frame
 Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
+local status = Instance.new("TextLabel")
+status.Size = UDim2.new(1, -16, 0, 20)
+status.Position = UDim2.new(0, 8, 0, 78)
+status.BackgroundTransparency = 1
+status.Text = "Status: Idle"
+status.TextColor3 = Color3.fromRGB(180, 180, 180)
+status.TextSize = 11
+status.Font = Enum.Font.Gotham
+status.Parent = frame
+
 local running = false
 local thread = nil
 
@@ -54,16 +75,18 @@ local function start()
     running = true
     btn.Text = "ON"
     btn.BackgroundColor3 = Color3.fromRGB(50, 180, 80)
+    status.Text = "Status: Running"
+    status.TextColor3 = Color3.fromRGB(100, 255, 120)
     thread = task.spawn(function()
         while running do
             pcall(function()
-                game:GetService("ReplicatedStorage").CraftingAyam.Remotes.RequestCraft:InvokeServer("ProcessingStation1")
+                ReplicatedStorage.CraftingAyam.Remotes.RequestCraft:InvokeServer("ProcessingStation1")
             end)
             task.wait(1)
             pcall(function()
-                game:GetService("ReplicatedStorage").CraftingAyam.Remotes.SubmitCraft:InvokeServer("ProcessingStation1")
+                ReplicatedStorage.CraftingAyam.Remotes.SubmitCraft:InvokeServer("ProcessingStation1")
             end)
-            task.wait(1)
+            task.wait(3)
         end
     end)
 end
@@ -72,6 +95,8 @@ local function stop()
     running = false
     btn.Text = "OFF"
     btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    status.Text = "Status: Idle"
+    status.TextColor3 = Color3.fromRGB(180, 180, 180)
     if thread then
         task.cancel(thread)
         thread = nil

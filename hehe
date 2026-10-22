@@ -13,63 +13,125 @@ gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 150, 0, 110)
-frame.Position = UDim2.new(0, 10, 0.5, -55)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Size = UDim2.new(0, 170, 0, 130)
+frame.Position = UDim2.new(0, 10, 0.5, -65)
+frame.BackgroundColor3 = Color3.fromRGB(255, 220, 80)
 frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = true
-frame.ZIndex = 1
 frame.Parent = gui
 
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 14)
+frameCorner.Parent = frame
+
+local frameStroke = Instance.new("UIStroke")
+frameStroke.Color = Color3.fromRGB(120, 80, 0)
+frameStroke.Thickness = 3
+frameStroke.Parent = frame
+
+local shadow = Instance.new("ImageLabel")
+shadow.Name = "Shadow"
+shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+shadow.Size = UDim2.new(1, 20, 1, 20)
+shadow.Position = UDim2.new(0.5, 0, 0.5, 4)
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://1316045217"
+shadow.ImageColor3 = Color3.new(0, 0, 0)
+shadow.ImageTransparency = 0.6
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+shadow.ZIndex = 0
+shadow.Parent = frame
+
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = Color3.fromRGB(255, 140, 60)
+titleBar.BorderSizePixel = 0
+titleBar.ZIndex = 2
+titleBar.Parent = frame
+
+local titleBarCorner = Instance.new("UICorner")
+titleBarCorner.CornerRadius = UDim.new(0, 14)
+titleBarCorner.Parent = titleBar
+
+local titleBarFix = Instance.new("Frame")
+titleBarFix.Size = UDim2.new(1, 0, 0, 14)
+titleBarFix.Position = UDim2.new(0, 0, 1, -14)
+titleBarFix.BackgroundColor3 = Color3.fromRGB(255, 140, 60)
+titleBarFix.BorderSizePixel = 0
+titleBarFix.ZIndex = 2
+titleBarFix.Parent = titleBar
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -30, 0, 24)
-title.Position = UDim2.new(0, 8, 0, 0)
+title.Size = UDim2.new(1, -40, 1, 0)
+title.Position = UDim2.new(0, 12, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "SIPALING ERPI REALISTIS"
-title.TextColor3 = Color3.new(1, 1, 1)
-title.TextSize = 10
-title.Font = Enum.Font.GothamBold
+title.Text = "SIPALING ERPI"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 18
+title.Font = Enum.Font.FredokaOne
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.ZIndex = 2
-title.Parent = frame
+title.ZIndex = 3
+title.Parent = titleBar
+
+local titleStroke = Instance.new("UIStroke")
+titleStroke.Color = Color3.fromRGB(120, 60, 0)
+titleStroke.Thickness = 1.5
+titleStroke.Parent = title
 
 local close = Instance.new("TextButton")
-close.Size = UDim2.new(0, 20, 0, 20)
-close.Position = UDim2.new(1, -24, 0, 2)
-close.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+close.Size = UDim2.new(0, 24, 0, 24)
+close.Position = UDim2.new(1, -28, 0, 3)
+close.BackgroundColor3 = Color3.fromRGB(230, 60, 60)
 close.Text = "X"
 close.TextColor3 = Color3.new(1, 1, 1)
-close.TextSize = 12
-close.Font = Enum.Font.GothamBold
+close.TextSize = 14
+close.Font = Enum.Font.FredokaOne
 close.BorderSizePixel = 0
-close.ZIndex = 2
-close.Parent = frame
-Instance.new("UICorner", close).CornerRadius = UDim.new(0, 4)
+close.ZIndex = 4
+close.Parent = titleBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = close
+
+local closeStroke = Instance.new("UIStroke")
+closeStroke.Color = Color3.fromRGB(120, 20, 20)
+closeStroke.Thickness = 2
+closeStroke.Parent = close
 
 local btn = Instance.new("TextButton")
-btn.Size = UDim2.new(1, -16, 0, 40)
-btn.Position = UDim2.new(0, 8, 0, 30)
-btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+btn.Size = UDim2.new(1, -20, 0, 46)
+btn.Position = UDim2.new(0, 10, 0, 38)
+btn.BackgroundColor3 = Color3.fromRGB(120, 200, 80)
 btn.Text = "OFF"
 btn.TextColor3 = Color3.new(1, 1, 1)
-btn.TextSize = 14
-btn.Font = Enum.Font.GothamBold
+btn.TextSize = 22
+btn.Font = Enum.Font.FredokaOne
 btn.BorderSizePixel = 0
 btn.ZIndex = 2
 btn.Parent = frame
-Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 12)
+btnCorner.Parent = btn
+
+local btnStroke = Instance.new("UIStroke")
+btnStroke.Color = Color3.fromRGB(40, 100, 20)
+btnStroke.Thickness = 3
+btnStroke.Parent = btn
 
 local status = Instance.new("TextLabel")
-status.Size = UDim2.new(1, -16, 0, 20)
-status.Position = UDim2.new(0, 8, 0, 78)
+status.Size = UDim2.new(1, -20, 0, 24)
+status.Position = UDim2.new(0, 10, 1, -30)
 status.BackgroundTransparency = 1
-status.Text = "Status: Idle"
-status.TextColor3 = Color3.fromRGB(180, 180, 180)
-status.TextSize = 11
-status.Font = Enum.Font.Gotham
+status.Text = "Idle"
+status.TextColor3 = Color3.fromRGB(90, 60, 0)
+status.TextSize = 14
+status.Font = Enum.Font.FredokaOne
 status.ZIndex = 2
 status.Parent = frame
 
@@ -79,9 +141,10 @@ local thread = nil
 local function start()
     running = true
     btn.Text = "ON"
-    btn.BackgroundColor3 = Color3.fromRGB(50, 180, 80)
-    status.Text = "Status: Running"
-    status.TextColor3 = Color3.fromRGB(100, 255, 120)
+    btn.BackgroundColor3 = Color3.fromRGB(255, 90, 90)
+    btnStroke.Color = Color3.fromRGB(120, 20, 20)
+    status.Text = "Running..."
+    status.TextColor3 = Color3.fromRGB(200, 40, 40)
     thread = task.spawn(function()
         while running do
             pcall(function()
@@ -99,9 +162,10 @@ end
 local function stop()
     running = false
     btn.Text = "OFF"
-    btn.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-    status.Text = "Status: Idle"
-    status.TextColor3 = Color3.fromRGB(180, 180, 180)
+    btn.BackgroundColor3 = Color3.fromRGB(120, 200, 80)
+    btnStroke.Color = Color3.fromRGB(40, 100, 20)
+    status.Text = "Idle"
+    status.TextColor3 = Color3.fromRGB(90, 60, 0)
     if thread then
         task.cancel(thread)
         thread = nil

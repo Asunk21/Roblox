@@ -13,36 +13,39 @@ gui.ResetOnSpawn = false
 gui.Parent = playerGui
 
 local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 140, 0, 110)
+frame.Size = UDim2.new(0, 150, 0, 110)
 frame.Position = UDim2.new(0, 10, 0.5, -55)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 frame.Active = true
 frame.Draggable = true
+frame.ZIndex = 1
 frame.Parent = gui
 
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 8)
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -30, 0, 20)
-title.Position = UDim2.new(0, 8, 0, 4)
+title.Size = UDim2.new(1, -30, 0, 24)
+title.Position = UDim2.new(0, 8, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "Auto Craft by mok"
+title.Text = "SIPALING ERPI REALISTIS"
 title.TextColor3 = Color3.new(1, 1, 1)
-title.TextSize = 14
+title.TextSize = 10
 title.Font = Enum.Font.GothamBold
 title.TextXAlignment = Enum.TextXAlignment.Left
+title.ZIndex = 2
 title.Parent = frame
 
 local close = Instance.new("TextButton")
 close.Size = UDim2.new(0, 20, 0, 20)
-close.Position = UDim2.new(1, -24, 0, 4)
+close.Position = UDim2.new(1, -24, 0, 2)
 close.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 close.Text = "X"
 close.TextColor3 = Color3.new(1, 1, 1)
 close.TextSize = 12
 close.Font = Enum.Font.GothamBold
 close.BorderSizePixel = 0
+close.ZIndex = 2
 close.Parent = frame
 Instance.new("UICorner", close).CornerRadius = UDim.new(0, 4)
 
@@ -55,6 +58,7 @@ btn.TextColor3 = Color3.new(1, 1, 1)
 btn.TextSize = 14
 btn.Font = Enum.Font.GothamBold
 btn.BorderSizePixel = 0
+btn.ZIndex = 2
 btn.Parent = frame
 Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
@@ -66,6 +70,7 @@ status.Text = "Status: Idle"
 status.TextColor3 = Color3.fromRGB(180, 180, 180)
 status.TextSize = 11
 status.Font = Enum.Font.Gotham
+status.ZIndex = 2
 status.Parent = frame
 
 local running = false
@@ -86,7 +91,7 @@ local function start()
             pcall(function()
                 ReplicatedStorage.CraftingAyam.Remotes.SubmitCraft:InvokeServer("ProcessingStation1")
             end)
-            task.wait(3)
+            task.wait(5)
         end
     end)
 end
